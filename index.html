@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GestureFlow — JARVIS Neural 3D Workspace</title>
+    <meta name="description" content="Cinematic JARVIS-grade touchless 3D spatial gesture manipulation studio powered by MediaPipe and Three.js." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app" class="jarvis-app-shell">
+      <!-- Top Tactical Command Bar -->
+      <header class="jarvis-header">
+        <div class="brand-tactical-group">
+          <div class="reactor-core-beacon" id="globalBeacon" title="Arc Core Status: Ready">
+            <div class="core-inner"></div>
+            <div class="core-ring"></div>
+          </div>
+          <div class="brand-text-block">
+            <div class="brand-primary">GESTUREFLOW <span class="edition-tag">JARVIS // MK.VII</span></div>
+            <div class="brand-sub">SPATIAL NEURAL GESTURE ENGINE</div>
+          </div>
+        </div>
+
+        <!-- Direct 3D Object Quick-Target Selectors -->
+        <div class="target-selectors-bar" id="targetSelectorsBar">
+          <button type="button" class="target-chip" data-shape="Quantum Cube" id="chipCube">
+            <span class="chip-index">01</span>
+            <span class="chip-name">CUBE</span>
+          </button>
+          <button type="button" class="target-chip active" data-shape="Arc Reactor Sphere" id="chipSphere">
+            <span class="chip-index">02</span>
+            <span class="chip-name">SPHERE</span>
+          </button>
+          <button type="button" class="target-chip" data-shape="Torus Accelerator" id="chipTorus">
+            <span class="chip-index">03</span>
+            <span class="chip-name">TORUS</span>
+          </button>
+        </div>
+
+        <!-- Global Action Controls -->
+        <div class="header-action-group">
+          <button id="toggleGestureBtn" class="jarvis-btn btn-ghost active" type="button" title="Toggle hand gesture interaction">
+            <span class="btn-dot"></span>
+            <span id="gestureBtnText">GESTURES: ON</span>
+          </button>
+
+          <button id="resetSceneBtn" class="jarvis-btn btn-ghost" type="button" title="Reset all 3D mesh transforms">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            <span>RESET STAGE</span>
+          </button>
+
+          <button id="mirrorToggleBtn" class="jarvis-btn btn-ghost active" type="button" title="Toggle mirror preview orientation">
+            <span id="mirrorBtnLabel">MIRROR: ON</span>
+          </button>
+
+          <button id="fullscreenBtn" class="jarvis-btn btn-ghost" type="button" title="Toggle Fullscreen Immersion">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+            <span>EXPAND</span>
+          </button>
+
+          <button id="toggleDiagBtn" class="jarvis-btn btn-ghost" type="button" title="Hardware Diagnostics HUD">
+            <span class="btn-dot"></span>
+            <span id="diagBtnText">DIAGNOSTICS</span>
+          </button>
+
+          <button id="toggleCameraBtn" class="jarvis-btn btn-engage" type="button">
+            <span class="engage-glow"></span>
+            <span id="cameraBtnText">ENGAGE SENSORS</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Real-Time Pipeline Diagnostics HUD Panel (Collapsible) -->
+      <div id="diagnosticsPanel" class="jarvis-diagnostics-panel hidden" role="region" aria-label="Pipeline Telemetry Diagnostics">
+        <div class="diag-header">
+          <div class="diag-title">
+            <span class="diag-beacon-mini"></span>
+            <span>HARDWARE & PIPELINE TELEMETRY</span>
+          </div>
+          <div class="diag-header-actions">
+            <button id="diagRecoverBtn" class="jarvis-btn btn-ghost btn-xs" type="button" title="Cleanly reset & recover optical pipeline">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              <span>RECOVER PIPELINE</span>
+            </button>
+            <button id="closeDiagBtn" class="pip-minimize-btn" type="button" title="Close diagnostics panel">✕</button>
+          </div>
+        </div>
+
+        <div class="diag-grid">
+          <div class="diag-card">
+            <span class="diag-label">FRAME SCHEDULER</span>
+            <span class="diag-val font-mono text-cyan" id="diagSchedulerType">requestVideoFrameCallback (Native)</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">VIDEO ADVANCING</span>
+            <span class="diag-val font-mono text-emerald" id="diagStreamAdvancing">YES</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">CAMERA FRAME AGE</span>
+            <span class="diag-val font-mono" id="diagFrameAge">0 ms</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">SINCE LAST INFERENCE</span>
+            <span class="diag-val font-mono" id="diagTimeSinceInf">0 ms</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">INFERENCE DURATION</span>
+            <span class="diag-val font-mono text-cyan" id="diagInfDuration">0.0 ms</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">INFERENCE STATE</span>
+            <span class="diag-val font-mono" id="diagInferring">IDLE</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">CONSECUTIVE ERRORS</span>
+            <span class="diag-val font-mono" id="diagConsecErrors">0</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">SKIPPED OBSOLETE FRAMES</span>
+            <span class="diag-val font-mono" id="diagSkippedFrames">0</span>
+          </div>
+          <div class="diag-card full-width">
+            <span class="diag-label">TRACKING PIPELINE CONDITION</span>
+            <span class="diag-val font-mono text-ice" id="diagCondition">SEARCHING (C): NO_HAND_DETECTED</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">RENDER REFRESH RATE</span>
+            <span class="diag-val font-mono text-cyan" id="diagRenderFps">60 FPS</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">DELEGATE & ASSET</span>
+            <span class="diag-val font-mono" id="diagDelegate">GPU // LOCAL FLOAT16</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Stage & Workspace Layout -->
+      <main class="jarvis-main-stage">
+        <!-- 3D Interactive Stage (Dominates Visual Field) -->
+        <section class="three-stage-wrapper" id="threeStageWrapper">
+          <div class="three-viewport-card" id="threeCard">
+            <!-- Three.js Canvas Container -->
+            <div id="threeCanvasContainer" class="three-canvas-container"></div>
+
+            <!-- In-Viewport JARVIS Tactical HUD (Top Left) -->
+            <div class="tactical-hud-corner hud-top-left">
+              <div class="hud-bracket-card">
+                <div class="hud-card-header">
+                  <span class="hud-bracket-label">TACTICAL TARGET</span>
+                  <span class="hud-state-pill" id="hudStatePill">IDLE</span>
+                </div>
+                <div class="target-title-big" id="hudObjectVal">Arc Reactor Sphere</div>
+                <div class="hud-coord-readout">
+                  <span class="coord-tag">X: <span id="hudTargetX">0.00</span></span>
+                  <span class="coord-tag">Y: <span id="hudTargetY">0.35</span></span>
+                  <span class="coord-tag">Z: <span id="hudTargetZ">0.00</span></span>
+                </div>
+                <div class="hud-gesture-badge" id="hudGestureBadge">
+                  <span class="gesture-icon-text" id="hudGestureIcon">👆</span>
+                  <span class="gesture-name" id="hudGestureVal">POINTING</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- In-Viewport System Performance Arc (Top Right) -->
+            <div class="tactical-hud-corner hud-top-right">
+              <div class="hud-bracket-card telemetry-bracket">
+                <div class="hud-card-header">
+                  <span class="hud-bracket-label">CORE TELEMETRY</span>
+                  <span class="hud-perf-status" id="perfDegradedTag">OPTIMAL</span>
+                </div>
+                <div class="telemetry-compact-grid">
+                  <div class="tele-item">
+                    <span class="tele-label">RENDER FPS</span>
+                    <span class="tele-val text-cyan" id="cardRenderFps">60</span>
+                  </div>
+                  <div class="tele-item">
+                    <span class="tele-label">INFERENCE</span>
+                    <span class="tele-val text-emerald" id="cardLatency">-- ms</span>
+                  </div>
+                  <div class="tele-item">
+                    <span class="tele-label">TRACKING</span>
+                    <span class="tele-val" id="cardHandsCount">0 HANDS</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- On-Screen 2D Virtual Reticle Following Filtered Fingertip -->
+            <div id="screenVirtualCursor" class="jarvis-screen-reticle hidden">
+              <div class="reticle-diamond"></div>
+              <div class="reticle-circle"></div>
+              <div class="reticle-cross"></div>
+              <div class="reticle-tag" id="cursorLabel">POINT</div>
+            </div>
+
+            <!-- Holographic Picture-in-Picture Webcam HUD (Bottom Right) -->
+            <div class="holographic-pip-card" id="pipWebcamCard">
+              <div class="pip-tactical-header">
+                <div class="pip-hud-title">
+                  <span class="pip-pulse-dot" id="pipStatusDot"></span>
+                  <span>OPTICAL SCANNER</span>
+                </div>
+                <button type="button" class="pip-minimize-btn" id="pipToggleBtn" title="Toggle scanner preview">−</button>
+              </div>
+
+              <div class="pip-body camera-stage mirrored" id="cameraStage">
+                <video id="webcam" playsinline muted aria-label="Webcam feed"></video>
+                <canvas id="overlayCanvas" aria-label="MediaPipe tactical skeleton"></canvas>
+
+                <!-- Corner HUD Brackets -->
+                <div class="pip-corner c-tl"></div>
+                <div class="pip-corner c-tr"></div>
+                <div class="pip-corner c-bl"></div>
+                <div class="pip-corner c-br"></div>
+                <div class="pip-scanline"></div>
+
+                <!-- Idle Standby Overlay -->
+                <div class="pip-overlay idle-overlay" id="idleOverlay">
+                  <div class="pip-splash-box">
+                    <div class="arc-icon"></div>
+                    <span class="splash-text">SCANNER OFFLINE</span>
+                    <button id="splashStartBtn" class="jarvis-btn btn-engage btn-sm" type="button">ENGAGE</button>
+                  </div>
+                </div>
+
+                <!-- Loading Overlay -->
+                <div class="pip-overlay loading-overlay hidden" id="loadingOverlay">
+                  <div class="pip-splash-box">
+                    <div class="loading-arc-spinner"></div>
+                    <span class="splash-text" id="loadingMessage">INITIALIZING...</span>
+                  </div>
+                </div>
+
+                <!-- Error Overlay -->
+                <div class="pip-overlay error-overlay hidden" id="errorOverlay">
+                  <div class="pip-splash-box error-box">
+                    <span class="error-text" id="errorMessage">DEVICE ERROR</span>
+                    <button id="errorRetryBtn" class="jarvis-btn btn-sm btn-ghost" type="button">RETRY</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pip-footer-bar">
+                <span id="pipInferenceRate">0 INF/S</span>
+                <span id="pipFilterType">1€ FILTER ON</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Floating Tactical Tuning Drawer (Right Side) -->
+        <aside class="jarvis-tuning-dock" id="tuningDock">
+          <!-- Tuning Header -->
+          <div class="dock-header">
+            <span class="dock-title">TACTICAL CONTROLS</span>
+            <span class="dock-sub">ADAPTIVE TUNING</span>
+          </div>
+
+          <!-- Jitter & Smoothing Tuning -->
+          <div class="dock-card">
+            <div class="control-row">
+              <span class="control-label">JITTER FILTERING (1€)</span>
+              <span class="control-val font-mono" id="smoothingVal">0.35</span>
+            </div>
+            <input type="range" id="smoothingSlider" min="0.05" max="0.85" step="0.05" value="0.35" class="jarvis-slider" />
+            <div class="slider-endpoints">
+              <span>SNAPPY</span>
+              <span>BALANCED</span>
+              <span>ULTRA-SMOOTH</span>
+            </div>
+          </div>
+
+          <!-- Rotation Sensitivity Tuning -->
+          <div class="dock-card">
+            <div class="control-row">
+              <span class="control-label">ROTATION GAIN</span>
+              <span class="control-val font-mono" id="rotationVal">1.6x</span>
+            </div>
+            <input type="range" id="rotationSlider" min="0.4" max="3.5" step="0.2" value="1.6" class="jarvis-slider" />
+            <div class="slider-endpoints">
+              <span>SUBTLE</span>
+              <span>1.6x</span>
+              <span>AGGRESSIVE</span>
+            </div>
+          </div>
+
+          <!-- System Toggles -->
+          <div class="dock-card toggles-card">
+            <label class="jarvis-toggle">
+              <input type="checkbox" id="toggleGestureControl" checked>
+              <span class="toggle-rail"></span>
+              <span class="toggle-title">NEURAL GESTURE TRACKING</span>
+            </label>
+
+            <label class="jarvis-toggle">
+              <input type="checkbox" id="toggleOrbitControls" checked>
+              <span class="toggle-rail"></span>
+              <span class="toggle-title">MOUSE ORBIT FALLBACK</span>
+            </label>
+
+            <label class="jarvis-toggle">
+              <input type="checkbox" id="togglePipWebcam" checked>
+              <span class="toggle-rail"></span>
+              <span class="toggle-title">HOLOGRAPHIC SCANNER PIP</span>
+            </label>
+          </div>
+
+          <!-- Tactical Gesture Command Guide -->
+          <div class="dock-card command-guide-card">
+            <div class="guide-header">GESTURE COMMAND MATRIX</div>
+            <div class="command-grid">
+              <div class="cmd-item">
+                <span class="cmd-icon">🤏</span>
+                <div class="cmd-desc">
+                  <strong>PINCH TO GRAB</strong>
+                  <span>Drag & Quaternion rotate object</span>
+                </div>
+              </div>
+
+              <div class="cmd-item">
+                <span class="cmd-icon">👆</span>
+                <div class="cmd-desc">
+                  <strong>POINTING</strong>
+                  <span>Hover targeting & reticle tracking</span>
+                </div>
+              </div>
+
+              <div class="cmd-item">
+                <span class="cmd-icon">🖐️</span>
+                <div class="cmd-desc">
+                  <strong>OPEN PALM</strong>
+                  <span>Instant release & neutral mode</span>
+                </div>
+              </div>
+
+              <div class="cmd-item">
+                <span class="cmd-icon">✊</span>
+                <div class="cmd-desc">
+                  <strong>FIST</strong>
+                  <span>Freeze & lock spatial transform</span>
+                </div>
+              </div>
+
+              <div class="cmd-item">
+                <span class="cmd-icon">👐</span>
+                <div class="cmd-desc">
+                  <strong>TWO HANDS</strong>
+                  <span>Dynamic proportional scaling</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
