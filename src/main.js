@@ -1,8 +1,9 @@
 /**
- * GestureFlow — JARVIS Edition
+ * GestureFlow — Interactive Science Universe
  * Master Application Coordinator & Performance Decoupler
  * Separates ML inference from 60+ FPS Three.js rendering via VideoFrameScheduler,
- * batches DOM updates, and provides real-time diagnostic telemetry.
+ * batches DOM updates, provides real-time diagnostic telemetry, voice guidance,
+ * Matter Manipulation morphology, and interactive science discovery modules.
  */
 
 import { CameraManager } from './modules/camera.js';
@@ -13,6 +14,9 @@ import { SceneManager } from './modules/sceneManager.js';
 import { GestureDetector } from './modules/gestureDetector.js';
 import { InteractionController } from './modules/interactionController.js';
 import { VideoFrameScheduler } from './modules/videoScheduler.js';
+import { SpeechManager } from './modules/speechManager.js';
+import { EDUCATIONAL_CONTENT, ACHIEVEMENTS } from './modules/educationalData.js';
+import { MATTER_SHAPES } from './modules/matterEngine.js';
 import { INTERACTION_STATES } from './modules/gestureStateMachine.js';
 import {
   TRACKING_STATES,
@@ -24,8 +28,18 @@ class JarvisGestureStudio {
   constructor() {
     // DOM Element Cache
     this.dom = {
+      // Startup Experience Overlay
+      startupOverlay: document.getElementById('startupOverlay'),
+      startExperienceBtn: document.getElementById('startExperienceBtn'),
+      skipIntroBtn: document.getElementById('skipIntroBtn'),
+
       // Header & Tactical Core
       globalBeacon: document.getElementById('globalBeacon'),
+      headerActiveDomainLabel: document.getElementById('headerActiveDomainLabel'),
+      toggleVoiceBtn: document.getElementById('toggleVoiceBtn'),
+      voiceBtnText: document.getElementById('voiceBtnText'),
+      achievementsBtn: document.getElementById('achievementsBtn'),
+      achievementsBadgeLabel: document.getElementById('achievementsBadgeLabel'),
       toggleGestureBtn: document.getElementById('toggleGestureBtn'),
       gestureBtnText: document.getElementById('gestureBtnText'),
       resetSceneBtn: document.getElementById('resetSceneBtn'),
@@ -36,6 +50,63 @@ class JarvisGestureStudio {
       diagBtnText: document.getElementById('diagBtnText'),
       toggleCameraBtn: document.getElementById('toggleCameraBtn'),
       cameraBtnText: document.getElementById('cameraBtnText'),
+
+      // Science Modules Tabs
+      tabMatter: document.getElementById('tabMatter'),
+      tabSolar: document.getElementById('tabSolar'),
+      tabAnatomy: document.getElementById('tabAnatomy'),
+      tabChemistry: document.getElementById('tabChemistry'),
+      tabGeometry: document.getElementById('tabGeometry'),
+      tabEarth: document.getElementById('tabEarth'),
+
+      // Contextual Domain Quick Bars
+      domainQuickBar: document.getElementById('domainQuickBar'),
+      matterChipsGroup: document.getElementById('matterChipsGroup'),
+      solarControlsGroup: document.getElementById('solarControlsGroup'),
+      chipCloud: document.getElementById('chipCloud'),
+      chipSphere: document.getElementById('chipSphere'),
+      chipCube: document.getElementById('chipCube'),
+      chipTorus: document.getElementById('chipTorus'),
+      chipGalaxy: document.getElementById('chipGalaxy'),
+      chipSolarSys: document.getElementById('chipSolarSys'),
+
+      // Solar Speed Buttons
+      speed1x: document.getElementById('speed1x'),
+      speed2x: document.getElementById('speed2x'),
+      speed5x: document.getElementById('speed5x'),
+      speedPause: document.getElementById('speedPause'),
+
+      // Educational HUD Card
+      educationalHudCard: document.getElementById('educationalHudCard'),
+      hudCategoryLabel: document.getElementById('hudCategoryLabel'),
+      hudStatePill: document.getElementById('hudStatePill'),
+      hudObjectVal: document.getElementById('hudObjectVal'),
+      hudObjectDesc: document.getElementById('hudObjectDesc'),
+      educationalMetricsGrid: document.getElementById('educationalMetricsGrid'),
+      challengeMissionBox: document.getElementById('challengeMissionBox'),
+      challengeStatus: document.getElementById('challengeStatus'),
+      challengeTitle: document.getElementById('challengeTitle'),
+      challengeDesc: document.getElementById('challengeDesc'),
+      educationalScaleTag: document.getElementById('educationalScaleTag'),
+
+      hudTargetX: document.getElementById('hudTargetX'),
+      hudTargetY: document.getElementById('hudTargetY'),
+      hudTargetZ: document.getElementById('hudTargetZ'),
+      hudGestureBadge: document.getElementById('hudGestureBadge'),
+      hudGestureIcon: document.getElementById('hudGestureIcon'),
+      hudGestureVal: document.getElementById('hudGestureVal'),
+
+      // Live Subtitles Bar
+      subtitlesBar: document.getElementById('subtitlesBar'),
+      subtitlesText: document.getElementById('subtitlesText'),
+
+      // Achievements Modal Dialog
+      achievementsModal: document.getElementById('achievementsModal'),
+      modalBackdrop: document.getElementById('modalBackdrop'),
+      closeModalBtn: document.getElementById('closeModalBtn'),
+      closeModalBtn2: document.getElementById('closeModalBtn2'),
+      resetProgressBtn: document.getElementById('resetProgressBtn'),
+      achievementsGrid: document.getElementById('achievementsGrid'),
 
       // Diagnostics Panel HUD
       diagnosticsPanel: document.getElementById('diagnosticsPanel'),
@@ -53,25 +124,11 @@ class JarvisGestureStudio {
       diagRenderFps: document.getElementById('diagRenderFps'),
       diagDelegate: document.getElementById('diagDelegate'),
 
-      // Target Chips
-      chipCube: document.getElementById('chipCube'),
-      chipSphere: document.getElementById('chipSphere'),
-      chipTorus: document.getElementById('chipTorus'),
-
       // 3D Viewport & HUD Elements
       threeCard: document.getElementById('threeCard'),
       threeContainer: document.getElementById('threeCanvasContainer'),
       screenVirtualCursor: document.getElementById('screenVirtualCursor'),
       cursorLabel: document.getElementById('cursorLabel'),
-
-      hudStatePill: document.getElementById('hudStatePill'),
-      hudObjectVal: document.getElementById('hudObjectVal'),
-      hudTargetX: document.getElementById('hudTargetX'),
-      hudTargetY: document.getElementById('hudTargetY'),
-      hudTargetZ: document.getElementById('hudTargetZ'),
-      hudGestureBadge: document.getElementById('hudGestureBadge'),
-      hudGestureIcon: document.getElementById('hudGestureIcon'),
-      hudGestureVal: document.getElementById('hudGestureVal'),
 
       // Telemetry Top Right
       perfDegradedTag: document.getElementById('perfDegradedTag'),
@@ -113,6 +170,7 @@ class JarvisGestureStudio {
     this.sceneManager = new SceneManager(this.dom.threeContainer);
     this.gestureDetector = new GestureDetector();
     this.interactionController = new InteractionController(this.sceneManager);
+    this.speechManager = new SpeechManager(this.dom.subtitlesText);
 
     // Robust Video Frame Processing Scheduler (Decoupled from Three.js RAF)
     this.videoScheduler = new VideoFrameScheduler(this.dom.video, (frameTime, metadata) => {
@@ -125,6 +183,10 @@ class JarvisGestureStudio {
       detector: this.detector,
       gestureDetector: this.gestureDetector
     });
+
+    // Student Exhibition Achievements State
+    this.unlockedAchievements = new Set();
+    this._loadAchievements();
 
     // Lifecycle & Timing State
     this.isRunning = false;
@@ -149,16 +211,112 @@ class JarvisGestureStudio {
     this._setupResizeHandlers();
     this._syncSettings();
 
-    // Set initial default target to sphere
-    this.sceneManager.setSelectedObject(this.sceneManager.sphere, false);
-    this._updateTargetChips(this.sceneManager.sphere);
+    // Connect Interaction Controller listeners to Educational Engine
+    this.interactionController.onTargetSelected = (obj) => {
+      this._onObjectInspected(obj);
+    };
 
-    // Start 60+ FPS Three.js rendering loop immediately (completely decoupled from webcam)
+    this.interactionController.onGestureTriggered = (action, obj) => {
+      this._onGestureTriggered(action, obj);
+    };
+
+    // Initialize Default Science Module: Matter Manipulation
+    this.setScienceModule('matter');
+    this._updateAchievementsUI();
+
+    // Start 60+ FPS Three.js rendering loop immediately
     this._startRenderLoop();
   }
 
+  // =========================================================================
+  // EVENT BINDINGS
+  // =========================================================================
+
   _bindEvents() {
-    // Camera start/stop
+    // 1. Startup Cinematic Experience
+    if (this.dom.startExperienceBtn) {
+      this.dom.startExperienceBtn.addEventListener('click', () => this.dismissStartup(true));
+    }
+    if (this.dom.skipIntroBtn) {
+      this.dom.skipIntroBtn.addEventListener('click', () => this.dismissStartup(false));
+    }
+
+    // 2. Science Modules Navigation Tabs
+    const tabMap = [
+      { el: this.dom.tabMatter, mod: 'matter' },
+      { el: this.dom.tabSolar, mod: 'solar' },
+      { el: this.dom.tabAnatomy, mod: 'anatomy' },
+      { el: this.dom.tabChemistry, mod: 'chemistry' },
+      { el: this.dom.tabGeometry, mod: 'geometry' },
+      { el: this.dom.tabEarth, mod: 'earth' }
+    ];
+
+    tabMap.forEach(({ el, mod }) => {
+      if (el) {
+        el.addEventListener('click', () => this.setScienceModule(mod));
+      }
+    });
+
+    // 3. Matter Manipulation Morph Chips
+    const morphMap = [
+      { el: this.dom.chipCloud, shape: MATTER_SHAPES.CLOUD },
+      { el: this.dom.chipSphere, shape: MATTER_SHAPES.SPHERE },
+      { el: this.dom.chipCube, shape: MATTER_SHAPES.CUBE },
+      { el: this.dom.chipTorus, shape: MATTER_SHAPES.TORUS },
+      { el: this.dom.chipGalaxy, shape: MATTER_SHAPES.GALAXY },
+      { el: this.dom.chipSolarSys, shape: MATTER_SHAPES.SOLAR_SYSTEM }
+    ];
+
+    morphMap.forEach(({ el, shape }) => {
+      if (el) {
+        el.addEventListener('click', () => this.setMatterShape(shape));
+      }
+    });
+
+    // 4. Solar Simulation Speed Controls
+    if (this.dom.speed1x) {
+      this.dom.speed1x.addEventListener('click', () => this.setSolarSpeed(1.0, this.dom.speed1x));
+    }
+    if (this.dom.speed2x) {
+      this.dom.speed2x.addEventListener('click', () => this.setSolarSpeed(2.5, this.dom.speed2x));
+    }
+    if (this.dom.speed5x) {
+      this.dom.speed5x.addEventListener('click', () => this.setSolarSpeed(5.0, this.dom.speed5x));
+    }
+    if (this.dom.speedPause) {
+      this.dom.speedPause.addEventListener('click', () => this.setSolarSpeed(0.0, this.dom.speedPause));
+    }
+
+    // 5. Voice Guidance Toggle
+    if (this.dom.toggleVoiceBtn) {
+      this.dom.toggleVoiceBtn.addEventListener('click', () => {
+        const isVoiceOn = this.speechManager.toggleVoice();
+        this.dom.toggleVoiceBtn.classList.toggle('active', isVoiceOn);
+        this.dom.voiceBtnText.textContent = `VOICE: ${isVoiceOn ? 'ON' : 'OFF'}`;
+        if (isVoiceOn) {
+          this.speechManager.speak('Voice guidance enabled.');
+        }
+      });
+    }
+
+    // 6. Achievements Modal Dialog
+    if (this.dom.achievementsBtn) {
+      this.dom.achievementsBtn.addEventListener('click', () => this.openAchievementsModal());
+    }
+    if (this.dom.closeModalBtn) {
+      this.dom.closeModalBtn.addEventListener('click', () => this.closeAchievementsModal());
+    }
+    if (this.dom.closeModalBtn2) {
+      this.dom.closeModalBtn2.addEventListener('click', () => this.closeAchievementsModal());
+    }
+    if (this.dom.modalBackdrop) {
+      this.dom.modalBackdrop.addEventListener('click', () => this.closeAchievementsModal());
+    }
+    if (this.dom.resetProgressBtn) {
+      this.dom.resetProgressBtn.addEventListener('click', () => this.resetAchievements());
+    }
+
+    // 7. Camera start/stop
     this.dom.toggleCameraBtn.addEventListener('click', () => this.toggleCamera());
     this.dom.splashStartBtn.addEventListener('click', () => this.toggleCamera());
 
@@ -183,21 +341,8 @@ class JarvisGestureStudio {
     this.dom.resetSceneBtn.addEventListener('click', () => {
       this.sceneManager.resetScene();
       this.interactionController.fsm.forceReset();
-      this._updateTargetChips(this.sceneManager.sphere);
-    });
-
-    // Direct Target Selectors
-    this.dom.chipCube.addEventListener('click', () => {
-      this.sceneManager.setSelectedObject(this.sceneManager.cube, false);
-      this._updateTargetChips(this.sceneManager.cube);
-    });
-    this.dom.chipSphere.addEventListener('click', () => {
-      this.sceneManager.setSelectedObject(this.sceneManager.sphere, false);
-      this._updateTargetChips(this.sceneManager.sphere);
-    });
-    this.dom.chipTorus.addEventListener('click', () => {
-      this.sceneManager.setSelectedObject(this.sceneManager.torus, false);
-      this._updateTargetChips(this.sceneManager.torus);
+      this.speechManager.playChime('select');
+      this.speechManager.speak('Stage spatial transforms reset.');
     });
 
     // Gesture Toggle
@@ -260,6 +405,371 @@ class JarvisGestureStudio {
     });
   }
 
+  // =========================================================================
+  // STARTUP EXPERIENCE SEQUENCE
+  // =========================================================================
+
+  dismissStartup(withSpeech = true) {
+    if (!this.dom.startupOverlay) return;
+    this.dom.startupOverlay.classList.add('fading');
+    setTimeout(() => {
+      this.dom.startupOverlay.style.display = 'none';
+    }, 700);
+
+    this.speechManager.playChime('morph');
+
+    if (withSpeech) {
+      this.speechManager.speak('Welcome to GestureFlow Science Universe. Your hands control the cosmos.');
+    }
+
+    // Auto-engage optical sensors
+    if (!this.isRunning) {
+      this.startCamera();
+    }
+  }
+
+  // =========================================================================
+  // SCIENCE DOMAIN SWITCHING & EDUCATIONAL HUD
+  // =========================================================================
+
+  setScienceModule(moduleId) {
+    // 1. Update Tab Bar UI
+    const tabs = [this.dom.tabMatter, this.dom.tabSolar, this.dom.tabAnatomy, this.dom.tabChemistry, this.dom.tabGeometry, this.dom.tabEarth];
+    tabs.forEach(t => {
+      if (t) t.classList.toggle('active', t.getAttribute('data-module') === moduleId);
+    });
+
+    // 2. Toggle Contextual Quick Bars
+    if (this.dom.matterChipsGroup) {
+      this.dom.matterChipsGroup.classList.toggle('hidden', moduleId !== 'matter');
+    }
+    if (this.dom.solarControlsGroup) {
+      this.dom.solarControlsGroup.classList.toggle('hidden', moduleId !== 'solar');
+    }
+
+    // 3. Update Scene 3D Environment
+    this.sceneManager.setMode(moduleId);
+
+    // 4. Update Header Subtitle
+    const domainTitles = {
+      matter: 'QUANTUM MATTER MANIPULATION',
+      solar: 'HELIOCENTRIC SOLAR SYSTEM EXPLORER',
+      anatomy: 'BIOMEDICAL ANATOMY & PHYSIOLOGY',
+      chemistry: 'ATOMIC STRUCTURE & DNA DOUBLE HELIX',
+      geometry: 'PLATONIC POLYHEDRA & TOPOLOGY',
+      earth: 'PLANETARY GEOPHYSICS & BIOMES'
+    };
+    if (this.dom.headerActiveDomainLabel) {
+      this.dom.headerActiveDomainLabel.textContent = domainTitles[moduleId] || 'SCIENCE UNIVERSE';
+    }
+
+    // 5. Update Educational HUD Card for initial domain state
+    this._updateEducationalCardForModule(moduleId);
+
+    // 6. Audio Feedback & Speech Guidance
+    this.speechManager.playChime('select');
+    const spokenIntros = {
+      matter: 'Matter Manipulation Studio. Pinch to grab, rotate your hand, or open palm to trigger a particle shockwave.',
+      solar: 'Solar System Explorer. Point to select any planet, or pinch to inspect.',
+      anatomy: 'Human Anatomy Lab. Inspect the beating heart, respiratory lungs, and neural cortex.',
+      chemistry: 'Atoms and Molecules. Examine quantized electron shells, bond geometries, and DNA.',
+      geometry: 'Geometry Lab. Rotate regular Platonic polyhedra and verify Euler\'s formula.',
+      earth: 'Planetary Earth Explorer. Rotate the globe and explore geographic hotspots.'
+    };
+    if (spokenIntros[moduleId]) {
+      this.speechManager.speak(spokenIntros[moduleId]);
+    }
+  }
+
+  setMatterShape(shapeKey) {
+    if (!this.sceneManager.matterEngine) return;
+    this.sceneManager.matterEngine.morphTo(shapeKey);
+    this.speechManager.playChime('morph');
+
+    // Update active chip UI
+    const chips = [this.dom.chipCloud, this.dom.chipSphere, this.dom.chipCube, this.dom.chipTorus, this.dom.chipGalaxy, this.dom.chipSolarSys];
+    chips.forEach(c => {
+      if (c) c.classList.toggle('active', c.getAttribute('data-shape') === shapeKey);
+    });
+
+    // Update fact card
+    const shapeInfo = EDUCATIONAL_CONTENT.matter.shapes[shapeKey];
+    if (shapeInfo) {
+      this.dom.hudObjectVal.textContent = shapeInfo.name;
+      this.dom.hudObjectDesc.textContent = shapeInfo.desc;
+      this.dom.hudCategoryLabel.textContent = 'QUANTUM MORPHOLOGY';
+
+      this._renderMetrics(shapeInfo.stats);
+    }
+
+    // Check challenge: Morph into Spiral Galaxy
+    if (shapeKey === MATTER_SHAPES.GALAXY) {
+      this._unlockAchievement('matter_morph_galaxy');
+    }
+  }
+
+  setSolarSpeed(speed, activeBtn) {
+    if (this.sceneManager.scienceModules && this.sceneManager.scienceModules.moduleStates.solar) {
+      const s = this.sceneManager.scienceModules.moduleStates.solar;
+      s.speedMultiplier = speed;
+      s.paused = (speed === 0);
+    }
+    [this.dom.speed1x, this.dom.speed2x, this.dom.speed5x, this.dom.speedPause].forEach(b => {
+      if (b) b.classList.remove('active');
+    });
+    if (activeBtn) activeBtn.classList.add('active');
+    this.speechManager.playChime('select');
+  }
+
+  _updateEducationalCardForModule(moduleId) {
+    const data = EDUCATIONAL_CONTENT[moduleId];
+    if (!data) return;
+
+    this.dom.hudCategoryLabel.textContent = data.subtitle;
+    this.dom.hudObjectVal.textContent = data.title;
+    this.dom.hudObjectDesc.textContent = data.intro;
+
+    // Challenge Box
+    if (data.challenge) {
+      this.dom.challengeTitle.textContent = data.challenge.title;
+      this.dom.challengeDesc.textContent = data.challenge.description;
+      const isDone = this.unlockedAchievements.has(data.challenge.id);
+      this.dom.challengeStatus.textContent = isDone ? 'COMPLETED' : 'INCOMPLETE';
+      this.dom.challengeStatus.className = isDone ? 'challenge-status completed' : 'challenge-status';
+    }
+
+    // Scale tag visibility
+    if (this.dom.educationalScaleTag) {
+      this.dom.educationalScaleTag.style.display = (moduleId === 'solar' || moduleId === 'chemistry') ? 'block' : 'none';
+    }
+
+    // Default facts
+    if (data.facts) {
+      const metricObj = {};
+      data.facts.forEach(f => { metricObj[f.label] = f.value; });
+      this._renderMetrics(metricObj);
+    } else {
+      this._renderMetrics({ 'STATUS': 'Select an object in 3D to inspect detailed scientific telemetry' });
+    }
+  }
+
+  _onObjectInspected(obj) {
+    if (!obj || !obj.name) return;
+    const name = obj.name;
+    const moduleId = this.sceneManager.activeModuleId;
+    const data = EDUCATIONAL_CONTENT[moduleId];
+    if (!data) return;
+
+    let foundInfo = null;
+
+    if (moduleId === 'solar' && data.planets && data.planets[name]) {
+      foundInfo = data.planets[name];
+      this.dom.hudCategoryLabel.textContent = foundInfo.type || 'CELESTIAL BODY';
+      this.dom.hudObjectVal.textContent = foundInfo.name;
+      this.dom.hudObjectDesc.textContent = foundInfo.funFact || '';
+      this._renderMetrics({
+        'DIAMETER': foundInfo.diameter,
+        'ORBIT DISTANCE': foundInfo.distance,
+        'ORBITAL PERIOD': foundInfo.period,
+        'TEMPERATURE': foundInfo.temp
+      });
+
+      // Challenge check: inspect Saturn
+      if (name === 'Saturn') {
+        this._unlockAchievement('solar_inspect_saturn');
+      }
+
+    } else if (moduleId === 'anatomy' && data.organs && data.organs[name]) {
+      foundInfo = data.organs[name];
+      this.dom.hudCategoryLabel.textContent = foundInfo.system || 'ORGAN';
+      this.dom.hudObjectVal.textContent = foundInfo.name;
+      this.dom.hudObjectDesc.textContent = `${foundInfo.function} ${foundInfo.funFact}`;
+      this._renderMetrics({
+        'RATE / SPEED': foundInfo.rate || foundInfo.power || 'Dynamic',
+        'PHYSIOLOGY': foundInfo.volume || foundInfo.neurons || foundInfo.surfaceArea || 'Vital'
+      });
+
+      // Challenge check: inspect Heart
+      if (name === 'Human Heart') {
+        this._unlockAchievement('anatomy_inspect_heart');
+      }
+
+    } else if (moduleId === 'chemistry') {
+      const chemData = data.models[name] || data.models['Water Molecule'];
+      if (chemData) {
+        this.dom.hudCategoryLabel.textContent = chemData.geometry || 'MOLECULAR STRUCTURE';
+        this.dom.hudObjectVal.textContent = chemData.name;
+        this.dom.hudObjectDesc.textContent = chemData.funFact || chemData.elements || '';
+        this._renderMetrics({
+          'BOND ANGLE': chemData.bondAngle || chemData.pitch || 'Quantized',
+          'BOND TYPE': chemData.bondType || chemData.basePairs || 'Covalent'
+        });
+      }
+
+      // Challenge check: select oxygen atom
+      if (name === 'Oxygen Atom' || (obj.parent && obj.parent.name === 'Water Molecule')) {
+        this._unlockAchievement('chemistry_select_oxygen');
+      }
+
+    } else if (moduleId === 'geometry' && data.solids && data.solids[name]) {
+      foundInfo = data.solids[name];
+      this.dom.hudCategoryLabel.textContent = foundInfo.symmetry || 'PLATONIC SOLID';
+      this.dom.hudObjectVal.textContent = foundInfo.name;
+      this.dom.hudObjectDesc.textContent = `${foundInfo.euler} — ${foundInfo.funFact}`;
+      this._renderMetrics({
+        'FACES (F)': `${foundInfo.faces}`,
+        'VERTICES (V)': `${foundInfo.vertices}`,
+        'EDGES (E)': `${foundInfo.edges}`,
+        'EULER (V-E+F)': '2'
+      });
+
+      // Challenge check: Icosahedron
+      if (name === 'Icosahedron') {
+        this._unlockAchievement('geometry_inspect_icosahedron');
+      }
+
+    } else if (moduleId === 'earth' && data.hotspots && data.hotspots[name]) {
+      foundInfo = data.hotspots[name];
+      this.dom.hudCategoryLabel.textContent = foundInfo.region || 'GEOGRAPHIC HOTSPOT';
+      this.dom.hudObjectVal.textContent = foundInfo.name;
+      this.dom.hudObjectDesc.textContent = foundInfo.funFact;
+      this._renderMetrics({
+        'COORDINATES': foundInfo.coords,
+        'METRIC': foundInfo.depth || foundInfo.elevation || foundInfo.area || foundInfo.length
+      });
+
+      // Challenge check: Mariana Trench
+      if (name === 'Mariana Trench') {
+        this._unlockAchievement('earth_locate_mariana');
+      }
+    }
+  }
+
+  _renderMetrics(statsObj) {
+    if (!this.dom.educationalMetricsGrid) return;
+    this.dom.educationalMetricsGrid.innerHTML = '';
+    if (!statsObj) return;
+
+    Object.entries(statsObj).forEach(([k, v]) => {
+      const item = document.createElement('div');
+      item.className = 'edu-metric-item';
+      item.innerHTML = `
+        <span class="metric-key">${k.toUpperCase()}</span>
+        <span class="metric-val text-cyan">${v}</span>
+      `;
+      this.dom.educationalMetricsGrid.appendChild(item);
+    });
+  }
+
+  _onGestureTriggered(action, target) {
+    if (action === 'GRAB') {
+      this.speechManager.playChime('grab');
+    } else if (action === 'RELEASE') {
+      this.speechManager.playChime('release');
+    } else if (action === 'BURST') {
+      this.speechManager.playChime('burst');
+      this.speechManager.speak('Particle energy shockwave triggered!');
+    } else if (action === 'FREEZE') {
+      this.speechManager.playChime('select');
+      this.speechManager.speak('Matter arrangement frozen.');
+    } else if (action === 'UNFREEZE') {
+      this.speechManager.playChime('release');
+    }
+  }
+
+  // =========================================================================
+  // ACHIEVEMENTS & PROGRESS SYSTEM
+  // =========================================================================
+
+  _loadAchievements() {
+    try {
+      const stored = localStorage.getItem('gestureflow_achievements');
+      if (stored) {
+        this.unlockedAchievements = new Set(JSON.parse(stored));
+      }
+    } catch (e) {
+      this.unlockedAchievements = new Set();
+    }
+  }
+
+  _saveAchievements() {
+    try {
+      localStorage.setItem('gestureflow_achievements', JSON.stringify([...this.unlockedAchievements]));
+    } catch (e) {
+      // Local storage fallback
+    }
+  }
+
+  _unlockAchievement(id) {
+    if (this.unlockedAchievements.has(id)) return;
+    this.unlockedAchievements.add(id);
+    this._saveAchievements();
+    this._updateAchievementsUI();
+
+    const ach = ACHIEVEMENTS.find(a => a.id === id);
+    if (ach) {
+      this.speechManager.playChime('achievement');
+      this.speechManager.speak(`Discovery complete! Unlocked ${ach.title}.`);
+
+      // Update active challenge card status
+      if (this.dom.challengeStatus) {
+        this.dom.challengeStatus.textContent = 'COMPLETED';
+        this.dom.challengeStatus.className = 'challenge-status completed';
+      }
+    }
+  }
+
+  _updateAchievementsUI() {
+    const total = ACHIEVEMENTS.length;
+    const count = this.unlockedAchievements.size;
+    if (this.dom.achievementsBadgeLabel) {
+      this.dom.achievementsBadgeLabel.textContent = `🏆 BADGES ${count}/${total}`;
+    }
+    this._renderAchievementsGrid();
+  }
+
+  _renderAchievementsGrid() {
+    if (!this.dom.achievementsGrid) return;
+    this.dom.achievementsGrid.innerHTML = '';
+
+    ACHIEVEMENTS.forEach(a => {
+      const isUnlocked = this.unlockedAchievements.has(a.id);
+      const card = document.createElement('div');
+      card.className = `achievement-card ${isUnlocked ? 'unlocked' : ''}`;
+      card.innerHTML = `
+        <div class="achieve-icon-box">${isUnlocked ? a.icon : '🔒'}</div>
+        <div class="achieve-details">
+          <div class="achieve-title">${a.title}</div>
+          <div class="achieve-desc">${isUnlocked ? a.desc : 'Complete exploration challenge to unlock'}</div>
+        </div>
+      `;
+      this.dom.achievementsGrid.appendChild(card);
+    });
+  }
+
+  openAchievementsModal() {
+    if (!this.dom.achievementsModal) return;
+    this._renderAchievementsGrid();
+    this.dom.achievementsModal.classList.remove('hidden');
+    this.speechManager.playChime('select');
+  }
+
+  closeAchievementsModal() {
+    if (!this.dom.achievementsModal) return;
+    this.dom.achievementsModal.classList.add('hidden');
+  }
+
+  resetAchievements() {
+    this.unlockedAchievements.clear();
+    this._saveAchievements();
+    this._updateAchievementsUI();
+    this.speechManager.speak('Exhibition progress reset.');
+  }
+
+  // =========================================================================
+  // CORE CAMERA & TRACKING PIPELINE
+  // =========================================================================
+
   _setupResizeHandlers() {
     const onResize = () => {
       this.sceneManager.resize();
@@ -308,13 +818,13 @@ class JarvisGestureStudio {
     this._updateStatusBeacon(TRACKING_STATES.INITIALIZING);
 
     try {
-      // 1. Initialize MediaPipe HandLandmarker (single instance, GPU/local preferred)
+      // 1. Initialize MediaPipe HandLandmarker
       await this.detector.initialize(({ message }) => {
         this.dom.loadingMessage.textContent = message.toUpperCase();
       });
 
       // 2. Start webcam stream
-      this.dom.loadingMessage.textContent = 'CONNECTING OPTICAL SCANNER...';
+      this.dom.loadingMessage.textContent = 'CONNECTING OPTICAL SENSOR...';
       await this.camera.start();
 
       // 3. Resize canvas overlay
@@ -368,11 +878,6 @@ class JarvisGestureStudio {
     this.dom.hudGestureVal.textContent = 'STANDBY';
   }
 
-  /**
-   * Controlled Optical Pipeline Recovery:
-   * Safely disengages old frame schedulers, camera tracks, and detector error counters,
-   * then re-initializes without creating duplicate streams or leaks.
-   */
   async recoverPipeline() {
     if (this.isRecovering) return;
     this.isRecovering = true;
@@ -381,26 +886,19 @@ class JarvisGestureStudio {
     this.dom.loadingMessage.textContent = 'RECOVERING OPTICAL PIPELINE...';
 
     try {
-      // 1. Cleanly stop frame scheduler and release hardware camera tracks
       this.videoScheduler.stop();
       this.camera.stop();
 
-      // 2. Reset tracking and detector error counters
       this.detector.resetCounters();
       this.gestureDetector.needsFilterReset = true;
       this.interactionController.fsm.forceReset();
 
-      // Brief backoff delay to allow driver to settle
       await new Promise(r => setTimeout(r, 200));
 
-      // 3. Re-engage camera stream
       await this.camera.start();
-
-      // 4. Resize canvas overlay
       const rect = this.dom.cameraStage.getBoundingClientRect();
       this.renderer.resize(rect.width, rect.height);
 
-      // 5. Restart scheduler
       this.videoScheduler.start();
       this.isRunning = true;
       this._hideOverlay(this.dom.loadingOverlay);
@@ -425,7 +923,6 @@ class JarvisGestureStudio {
 
   /**
    * Primary Render Loop (Runs at full monitor refresh 60/120 Hz)
-   * Completely decoupled from camera inference to prevent main-thread stuttering!
    */
   _startRenderLoop() {
     const loop = (timestamp) => {
@@ -546,15 +1043,13 @@ class JarvisGestureStudio {
     if (this.latestInteractionStatus) {
       const { interactionState, selectedObjectName, detectedGesture } = this.latestInteractionStatus;
       this.dom.hudStatePill.textContent = interactionState;
-      this.dom.hudObjectVal.textContent = selectedObjectName;
 
-      // Coordinates & Target chip sync of active pointed target
+      // Coordinates readout
       const activeObj = this.interactionController.heldObject || this.sceneManager.hoveredObject || this.sceneManager.selectedObject;
       if (activeObj) {
         this.dom.hudTargetX.textContent = activeObj.position.x.toFixed(2);
         this.dom.hudTargetY.textContent = activeObj.position.y.toFixed(2);
         this.dom.hudTargetZ.textContent = activeObj.position.z.toFixed(2);
-        this._updateTargetChips(activeObj);
       }
 
       // Gesture badge
@@ -588,7 +1083,7 @@ class JarvisGestureStudio {
       }
     }
 
-    // Automated Watchdog Recovery: if detector fails repeatedly (>15 consecutive errors)
+    // Automated Watchdog Recovery
     if (this.isRunning && !this.isRecovering && snap.consecutiveErrors > 15) {
       if (this.recoveryAttempts < 2) {
         this.recoveryAttempts++;
@@ -609,15 +1104,6 @@ class JarvisGestureStudio {
       case GESTURE_TYPES.TWO_HAND_SCALE: return '👐';
       default: return '◈';
     }
-  }
-
-  _updateTargetChips(targetObj) {
-    if (!targetObj) return;
-    const name = targetObj.name;
-    this.dom.chipCube.classList.toggle('active', name === 'Quantum Cube');
-    this.dom.chipSphere.classList.toggle('active', name === 'Arc Reactor Sphere');
-    this.dom.chipTorus.classList.toggle('active', name === 'Torus Accelerator');
-    this.dom.hudObjectVal.textContent = name;
   }
 
   _updateStatusBeacon(state) {

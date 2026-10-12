@@ -46,16 +46,21 @@ export class InteractionController {
     this.targetScale = new THREE.Vector3(1, 1, 1);
 
     this.latestGesture = 'NEUTRAL';
+    this.previousGesture = 'NEUTRAL';
+    this.onTargetSelected = null;
+    this.onGestureTriggered = null;
     this._bindStateMachineEvents();
   }
 
   _bindStateMachineEvents() {
     this.fsm.on('grabStart', (target) => {
       this._onGrabStart(target);
+      if (this.onGestureTriggered) this.onGestureTriggered('GRAB', target);
     });
 
     this.fsm.on('grabRelease', (target) => {
       this._onGrabRelease(target);
+      if (this.onGestureTriggered) this.onGestureTriggered('RELEASE', target);
     });
 
     this.fsm.on('stateChange', (oldState, newState) => {
@@ -137,12 +142,35 @@ export class InteractionController {
 
       // Step 2c: Apply visual hovering and synchronize selected target
       if (candidateHover) {
+        const wasDifferent = this.sm.selectedObject !== candidateHover;
         this.sm.setHoveredObject(candidateHover);
         this.sm.setSelectedObject(candidateHover, false);
+        if (wasDifferent && this.onTargetSelected) {
+          this.onTargetSelected(candidateHover);
+        }
       } else {
         this.sm.setHoveredObject(null);
       }
     }
+
+    // 2d: Contextual Scientific Gesture Actions
+    if (gesture === 'OPEN_PALM' && this.previousGesture !== 'OPEN_PALM') {
+      if (this.sm.activeModuleId === 'matter' && this.sm.matterEngine) {
+        this.sm.matterEngine.triggerBurst();
+      }
+      if (this.onGestureTriggered) this.onGestureTriggered('BURST');
+    } else if (gesture === 'FIST' && this.previousGesture !== 'FIST') {
+      if (this.sm.activeModuleId === 'matter' && this.sm.matterEngine) {
+        this.sm.matterEngine.setFrozen(true);
+      }
+      if (this.onGestureTriggered) this.onGestureTriggered('FREEZE');
+    } else if (this.previousGesture === 'FIST' && gesture !== 'FIST') {
+      if (this.sm.activeModuleId === 'matter' && this.sm.matterEngine) {
+        this.sm.matterEngine.setFrozen(false);
+      }
+      if (this.onGestureTriggered) this.onGestureTriggered('UNFREEZE');
+    }
+    this.previousGesture = gesture;
 
     // 3. Update Camera Spatial Directions
     this.sm.camera.getWorldDirection(this.cameraDir);
