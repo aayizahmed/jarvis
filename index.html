@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GestureFlow — Interactive Science Universe</title>
-    <meta name="description" content="Cinematic JARVIS-grade touchless 3D spatial gesture manipulation and interactive science universe powered by MediaPipe and Three.js." />
+    <title>GestureFlow — Reality Engine 3D Sandbox</title>
+    <meta name="description" content="Futuristic 3D reality sandbox and holographic manipulation studio powered by MediaPipe and Three.js." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Startup Cinematic Experience Sequence Overlay -->
-    <div id="startupOverlay" class="startup-experience-overlay" role="dialog" aria-modal="true" aria-label="Welcome to GestureFlow Science Universe">
+    <!-- Startup Experience Sequence Overlay -->
+    <div id="startupOverlay" class="startup-experience-overlay" role="dialog" aria-modal="true" aria-label="Welcome to GestureFlow Reality Engine">
       <div class="startup-grid-bg"></div>
       <div class="startup-content">
         <div class="startup-arc-core">
@@ -22,21 +22,21 @@
           <div class="core-pulse-beacon"></div>
         </div>
         <div class="startup-brand">
-          <span class="startup-edition">COMPUTER SCIENCE EXHIBITION // MK.VIII</span>
+          <span class="startup-edition">SPATIAL SANDBOX STUDIO // V2.0</span>
           <h1 class="startup-title">GESTUREFLOW</h1>
-          <h2 class="startup-subtitle">INTERACTIVE SCIENCE UNIVERSE</h2>
-          <p class="startup-tagline">"Your Hands. Your Universe."</p>
+          <h2 class="startup-subtitle">REALITY ENGINE</h2>
+          <p class="startup-tagline">"Spawn. Tether. Manipulate. Your Hands. Your Universe."</p>
         </div>
         <div class="startup-features-badges">
-          <div class="feature-badge"><span class="badge-icon">🤏</span> Touchless 3D Vision</div>
-          <div class="feature-badge"><span class="badge-icon">✨</span> Matter Particle Morphing</div>
-          <div class="feature-badge"><span class="badge-icon">🪐</span> Solar System & Atoms</div>
-          <div class="feature-badge"><span class="badge-icon">🔊</span> Spoken Voice Guidance</div>
+          <div class="feature-badge"><span class="badge-icon">📦</span> 24+ Spawnable Assets</div>
+          <div class="feature-badge"><span class="badge-icon">🕸️</span> Superhero Web Tethering</div>
+          <div class="feature-badge"><span class="badge-icon">⚡</span> Plasma Energy Blaster</div>
+          <div class="feature-badge"><span class="badge-icon">🤏</span> Touchless Hand Tracking</div>
         </div>
         <div class="startup-actions">
           <button id="startExperienceBtn" class="jarvis-btn btn-engage btn-lg" type="button">
             <span class="engage-glow"></span>
-            <span>START EXPERIENCE</span>
+            <span>ENTER REALITY ENGINE</span>
             <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
@@ -46,66 +46,53 @@
       </div>
     </div>
 
-    <!-- Main Application Shell -->
-    <div id="app" class="jarvis-app-shell">
-      <!-- Top Tactical Command Bar -->
-      <header class="jarvis-header">
+    <!-- Main Reality Shell -->
+    <div id="app" class="jarvis-app-shell reality-shell">
+      <!-- Top Command Bar -->
+      <header class="jarvis-header reality-header">
         <div class="brand-tactical-group">
-          <div class="reactor-core-beacon" id="globalBeacon" title="Science Core Status: Ready">
+          <div class="reactor-core-beacon" id="globalBeacon" title="Reality Core: Active">
             <div class="core-inner"></div>
             <div class="core-ring"></div>
           </div>
           <div class="brand-text-block">
-            <div class="brand-primary">GESTUREFLOW <span class="edition-tag">SCIENCE UNIVERSE</span></div>
-            <div class="brand-sub" id="headerActiveDomainLabel">QUANTUM MATTER MANIPULATION</div>
+            <div class="brand-primary">GESTUREFLOW <span class="edition-tag">REALITY ENGINE</span></div>
+            <div class="brand-sub" id="headerActiveDomainLabel">3D SPATIAL SANDBOX</div>
           </div>
         </div>
 
-        <!-- Science Modules Navigation Bar -->
-        <nav class="science-module-tabs" id="scienceModuleTabs" aria-label="Science Modules">
-          <button type="button" class="module-tab active" data-module="matter" id="tabMatter">
-            <span class="tab-icon">✨</span>
-            <span class="tab-title">MATTER</span>
+        <!-- Central Tool Selector Matrix -->
+        <div class="reality-tool-selector" id="realityToolSelector" role="toolbar" aria-label="Interaction Tools">
+          <button type="button" class="tool-btn active" data-tool="MANIPULATE" id="toolManipulate" title="Grab, Move, Rotate and Scale">
+            <span class="tool-icon">🖐️</span>
+            <span class="tool-label">MANIPULATE</span>
           </button>
-          <button type="button" class="module-tab" data-module="solar" id="tabSolar">
-            <span class="tab-icon">🪐</span>
-            <span class="tab-title">SOLAR SYSTEM</span>
+          <button type="button" class="tool-btn" data-tool="WEB_SHOOTER" id="toolWeb" title="Shoot Superhero Web & Pull Objects">
+            <span class="tool-icon">🕸️</span>
+            <span class="tool-label">WEB TETHER</span>
           </button>
-          <button type="button" class="module-tab" data-module="anatomy" id="tabAnatomy">
-            <span class="tab-icon">🫀</span>
-            <span class="tab-title">ANATOMY</span>
+          <button type="button" class="tool-btn" data-tool="ENERGY_BLASTER" id="toolBlaster" title="Launch Simulated Plasma Bolts">
+            <span class="tool-icon">⚡</span>
+            <span class="tool-label">ENERGY BLASTER</span>
           </button>
-          <button type="button" class="module-tab" data-module="chemistry" id="tabChemistry">
-            <span class="tab-icon">⚛️</span>
-            <span class="tab-title">ATOMS & DNA</span>
-          </button>
-          <button type="button" class="module-tab" data-module="geometry" id="tabGeometry">
-            <span class="tab-icon">📐</span>
-            <span class="tab-title">GEOMETRY</span>
-          </button>
-          <button type="button" class="module-tab" data-module="earth" id="tabEarth">
-            <span class="tab-icon">🌍</span>
-            <span class="tab-title">EARTH</span>
-          </button>
-        </nav>
+        </div>
 
-        <!-- Global Action Controls -->
+        <!-- Global Sandbox Actions -->
         <div class="header-action-group">
-          <button id="toggleVoiceBtn" class="jarvis-btn btn-ghost active" type="button" title="Toggle audio voice guidance">
-            <span class="btn-dot"></span>
-            <span id="voiceBtnText">VOICE: ON</span>
+          <button id="toggleInventoryBtn" class="jarvis-btn btn-engage active" type="button" title="Toggle 3D Asset Inventory">
+            <span class="btn-icon-text">📦</span>
+            <span id="inventoryBtnLabel">INVENTORY</span>
           </button>
 
-          <button id="achievementsBtn" class="jarvis-btn btn-ghost" type="button" title="Exhibition discovery achievements">
-            <span id="achievementsBadgeLabel">🏆 BADGES 0/6</span>
+          <button id="undoBtn" class="jarvis-btn btn-ghost" type="button" title="Undo last spawn or transform (Ctrl+Z)">
+            <span>↩️ UNDO</span>
           </button>
 
-          <button id="toggleGestureBtn" class="jarvis-btn btn-ghost active" type="button" title="Toggle hand gesture interaction">
-            <span class="btn-dot"></span>
-            <span id="gestureBtnText">GESTURES: ON</span>
+          <button id="clearSceneBtn" class="jarvis-btn btn-ghost" type="button" title="Clear all spawned objects">
+            <span>🗑️ CLEAR</span>
           </button>
 
-          <button id="resetSceneBtn" class="jarvis-btn btn-ghost" type="button" title="Reset all 3D mesh transforms">
+          <button id="resetSceneBtn" class="jarvis-btn btn-ghost" type="button" title="Reset default scene">
             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
               <path d="M3 3v5h5"/>
@@ -136,6 +123,25 @@
         </div>
       </header>
 
+      <!-- First-Use Tutorial Banner (3 Simple Steps) -->
+      <div id="tutorialBanner" class="tutorial-banner">
+        <div class="tutorial-step">
+          <span class="step-num">1</span>
+          <span class="step-text">Open <strong>Inventory</strong> & click any item to spawn</span>
+        </div>
+        <div class="tutorial-step-divider">→</div>
+        <div class="tutorial-step">
+          <span class="step-num">2</span>
+          <span class="step-text">Point with index finger & <strong>Pinch</strong> to grab</span>
+        </div>
+        <div class="tutorial-step-divider">→</div>
+        <div class="tutorial-step">
+          <span class="step-num">3</span>
+          <span class="step-text">Move hand to <strong>Drag/Rotate</strong> or shoot <strong>Webs</strong></span>
+        </div>
+        <button id="dismissTutorialBtn" class="tutorial-close-btn" type="button" title="Dismiss onboarding guide">✕ GOT IT</button>
+      </div>
+
       <!-- Real-Time Pipeline Diagnostics HUD Panel (Collapsible) -->
       <div id="diagnosticsPanel" class="jarvis-diagnostics-panel hidden" role="region" aria-label="Pipeline Telemetry Diagnostics">
         <div class="diag-header">
@@ -157,7 +163,7 @@
         <div class="diag-grid">
           <div class="diag-card">
             <span class="diag-label">FRAME SCHEDULER</span>
-            <span class="diag-val font-mono text-cyan" id="diagSchedulerType">requestVideoFrameCallback (Native)</span>
+            <span class="diag-val font-mono text-cyan" id="diagSchedulerType">requestVideoFrameCallback</span>
           </div>
           <div class="diag-card">
             <span class="diag-label">VIDEO ADVANCING</span>
@@ -166,10 +172,6 @@
           <div class="diag-card">
             <span class="diag-label">CAMERA FRAME AGE</span>
             <span class="diag-val font-mono" id="diagFrameAge">0 ms</span>
-          </div>
-          <div class="diag-card">
-            <span class="diag-label">SINCE LAST INFERENCE</span>
-            <span class="diag-val font-mono" id="diagTimeSinceInf">0 ms</span>
           </div>
           <div class="diag-card">
             <span class="diag-label">INFERENCE DURATION</span>
@@ -183,10 +185,6 @@
             <span class="diag-label">CONSECUTIVE ERRORS</span>
             <span class="diag-val font-mono" id="diagConsecErrors">0</span>
           </div>
-          <div class="diag-card">
-            <span class="diag-label">SKIPPED OBSOLETE FRAMES</span>
-            <span class="diag-val font-mono" id="diagSkippedFrames">0</span>
-          </div>
           <div class="diag-card full-width">
             <span class="diag-label">TRACKING PIPELINE CONDITION</span>
             <span class="diag-val font-mono text-ice" id="diagCondition">SEARCHING: NO_HAND_DETECTED</span>
@@ -196,117 +194,89 @@
             <span class="diag-val font-mono text-cyan" id="diagRenderFps">60 FPS</span>
           </div>
           <div class="diag-card">
-            <span class="diag-label">DELEGATE & ASSET</span>
+            <span class="diag-label">DELEGATE</span>
             <span class="diag-val font-mono" id="diagDelegate">GPU // LOCAL FLOAT16</span>
           </div>
         </div>
       </div>
 
-      <!-- Main Stage & Workspace Layout -->
-      <main class="jarvis-main-stage">
-        <!-- 3D Interactive Stage (Dominates Visual Field) -->
-        <section class="three-stage-wrapper" id="threeStageWrapper">
+      <!-- Main Stage (Dominates Visual Field: 85-90% Screen) -->
+      <main class="jarvis-main-stage reality-stage">
+        <!-- 3D Interactive Stage Viewport -->
+        <section class="three-stage-wrapper full-screen-stage" id="threeStageWrapper">
           <div class="three-viewport-card" id="threeCard">
             <!-- Three.js Canvas Container -->
             <div id="threeCanvasContainer" class="three-canvas-container"></div>
 
-            <!-- Contextual Domain Quick Controls Bar (Top Center) -->
-            <div class="domain-quick-bar" id="domainQuickBar">
-              <!-- Matter Manipulation Morph Selectors -->
-              <div class="quick-chip-group" id="matterChipsGroup">
-                <button type="button" class="domain-chip active" data-shape="CLOUD" id="chipCloud">
-                  <span class="chip-num">01</span>
-                  <span>NEBULA</span>
-                </button>
-                <button type="button" class="domain-chip" data-shape="SPHERE" id="chipSphere">
-                  <span class="chip-num">02</span>
-                  <span>SPHERE</span>
-                </button>
-                <button type="button" class="domain-chip" data-shape="CUBE" id="chipCube">
-                  <span class="chip-num">03</span>
-                  <span>CUBE</span>
-                </button>
-                <button type="button" class="domain-chip" data-shape="TORUS" id="chipTorus">
-                  <span class="chip-num">04</span>
-                  <span>TORUS</span>
-                </button>
-                <button type="button" class="domain-chip" data-shape="GALAXY" id="chipGalaxy">
-                  <span class="chip-num">05</span>
-                  <span>GALAXY</span>
-                </button>
-                <button type="button" class="domain-chip" data-shape="SOLAR_SYSTEM" id="chipSolarSys">
-                  <span class="chip-num">06</span>
-                  <span>SOLAR</span>
-                </button>
+            <!-- Floating Collapsible Holographic Inventory Drawer (Left Side) -->
+            <aside class="floating-inventory-drawer" id="inventoryDrawer">
+              <div class="drawer-header">
+                <div class="drawer-title-group">
+                  <span class="drawer-tag">REALITY ASSETS</span>
+                  <div class="drawer-title">3D INVENTORY</div>
+                </div>
+                <button id="closeInventoryBtn" class="pip-minimize-btn" type="button" title="Collapse inventory drawer">✕</button>
               </div>
 
-              <!-- Solar System Speed Controls (Hidden by default) -->
-              <div class="quick-chip-group hidden" id="solarControlsGroup">
-                <button type="button" class="domain-chip active" data-speed="1.0" id="speed1x">1x ORBIT</button>
-                <button type="button" class="domain-chip" data-speed="2.5" id="speed2x">2.5x SPEED</button>
-                <button type="button" class="domain-chip" data-speed="5.0" id="speed5x">5x SPEED</button>
-                <button type="button" class="domain-chip" data-speed="0" id="speedPause">PAUSE</button>
+              <!-- Inventory Search Bar -->
+              <div class="inventory-search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="inventorySearchInput" class="jarvis-search-input" placeholder="Search shapes, powers, webs..." />
               </div>
-            </div>
 
-            <!-- In-Viewport Holographic Educational Fact Card (Top Left) -->
-            <div class="tactical-hud-corner hud-top-left">
-              <div class="hud-bracket-card educational-hud-card" id="educationalHudCard">
-                <div class="hud-card-header">
-                  <span class="hud-bracket-label" id="hudCategoryLabel">QUANTUM FIELD</span>
-                  <span class="hud-state-pill" id="hudStatePill">STANDBY</span>
+              <!-- Category Filter Tabs -->
+              <div class="inventory-cat-tabs" id="inventoryCatTabs">
+                <button type="button" class="cat-tab active" data-cat="all">ALL</button>
+                <button type="button" class="cat-tab" data-cat="shapes">SHAPES</button>
+                <button type="button" class="cat-tab" data-cat="objects">OBJECTS</button>
+                <button type="button" class="cat-tab" data-cat="powers">POWERS</button>
+                <button type="button" class="cat-tab" data-cat="webs">WEBS</button>
+                <button type="button" class="cat-tab" data-cat="particles">PARTICLES</button>
+              </div>
+
+              <!-- Scrollable Asset Grid -->
+              <div class="inventory-items-grid" id="inventoryItemsGrid">
+                <!-- Dynamically populated from inventoryData.js -->
+              </div>
+            </aside>
+
+            <!-- Floating Selected Object Inspector (Bottom Left) -->
+            <div class="floating-inspector-card" id="objectInspectorCard">
+              <div class="inspector-header">
+                <span class="inspector-badge">INSPECTOR</span>
+                <span class="inspector-item-name" id="inspectorItemName">Quantum Cube #1</span>
+              </div>
+              <div class="inspector-body">
+                <div class="inspector-row">
+                  <span class="insp-label">COORDINATES</span>
+                  <span class="insp-val font-mono" id="inspectorCoords">X: 0.00 | Y: 0.40 | Z: 0.00</span>
                 </div>
-                <div class="target-title-big" id="hudObjectVal">Quantum Nebula Cloud</div>
-                <p class="target-desc-text" id="hudObjectDesc">
-                  Turbulent gaseous cloud of interstellar particles where stars and planetary systems coalesce.
-                </p>
-
-                <!-- Dynamic Scientific Metrics Grid -->
-                <div class="educational-metrics-grid" id="educationalMetricsGrid">
-                  <div class="edu-metric-item">
-                    <span class="metric-key">TEMPERATURE</span>
-                    <span class="metric-val text-cyan">10 - 20 K</span>
-                  </div>
-                  <div class="edu-metric-item">
-                    <span class="metric-key">DENSITY</span>
-                    <span class="metric-val text-emerald">10² - 10⁶ /cm³</span>
-                  </div>
+                <div class="inspector-row">
+                  <span class="insp-label">PHYSICS / INERTIA</span>
+                  <label class="jarvis-toggle-mini">
+                    <input type="checkbox" id="inspectorPhysicsToggle" checked>
+                    <span class="toggle-rail-mini"></span>
+                  </label>
                 </div>
-
-                <!-- Active Discovery Challenge Card -->
-                <div class="challenge-mission-box" id="challengeMissionBox">
-                  <div class="challenge-header-row">
-                    <span class="challenge-badge-tag">CHALLENGE</span>
-                    <span class="challenge-status" id="challengeStatus">INCOMPLETE</span>
-                  </div>
-                  <div class="challenge-title" id="challengeTitle">Cosmic Genesis</div>
-                  <div class="challenge-desc" id="challengeDesc">Morph the particle field into the Spiral Galaxy configuration.</div>
-                </div>
-
-                <!-- Educational Scale Notice Indicator -->
-                <div class="educational-scale-tag" id="educationalScaleTag">
-                  ℹ️ Educational Scale: Dimensions & distances optimized for interactive tactile exploration.
-                </div>
-
-                <!-- 3D Coordinates & Active Gesture Readout -->
-                <div class="hud-coord-readout">
-                  <span class="coord-tag">X: <span id="hudTargetX">0.00</span></span>
-                  <span class="coord-tag">Y: <span id="hudTargetY">0.00</span></span>
-                  <span class="coord-tag">Z: <span id="hudTargetZ">0.00</span></span>
-                </div>
-
-                <div class="hud-gesture-badge" id="hudGestureBadge">
-                  <span class="gesture-icon-text" id="hudGestureIcon">👆</span>
-                  <span class="gesture-name" id="hudGestureVal">POINTING</span>
+                <div class="inspector-actions-row">
+                  <button type="button" class="insp-action-btn" id="inspectorDuplicateBtn" title="Duplicate selected entity">
+                    <span>📑 CLONE</span>
+                  </button>
+                  <button type="button" class="insp-action-btn" id="inspectorWebBtn" title="Shoot web strand to this entity">
+                    <span>🕸️ WEB</span>
+                  </button>
+                  <button type="button" class="insp-action-btn btn-danger" id="inspectorDeleteBtn" title="Delete selected entity">
+                    <span>🗑️ DELETE</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- In-Viewport System Performance Arc (Top Right) -->
+            <!-- In-Viewport System Performance & Status (Top Right) -->
             <div class="tactical-hud-corner hud-top-right">
               <div class="hud-bracket-card telemetry-bracket">
                 <div class="hud-card-header">
-                  <span class="hud-bracket-label">SYSTEM TELEMETRY</span>
+                  <span class="hud-bracket-label">CORE TELEMETRY</span>
                   <span class="hud-perf-status" id="perfDegradedTag">OPTIMAL</span>
                 </div>
                 <div class="telemetry-compact-grid">
@@ -323,6 +293,10 @@
                     <span class="tele-val" id="cardHandsCount">0 HANDS</span>
                   </div>
                 </div>
+                <div class="hud-gesture-badge-compact">
+                  <span class="gesture-icon-text" id="hudGestureIcon">👆</span>
+                  <span class="gesture-name" id="hudGestureVal">POINTING</span>
+                </div>
               </div>
             </div>
 
@@ -331,7 +305,7 @@
               <div class="voice-audio-wave">
                 <span></span><span></span><span></span><span></span>
               </div>
-              <span id="subtitlesText" class="subtitles-text">Welcome to GestureFlow Science Universe. Engage sensors to begin.</span>
+              <span id="subtitlesText" class="subtitles-text">GestureFlow Reality Engine active. Open inventory or pinch to grab.</span>
             </div>
 
             <!-- On-Screen 2D Virtual Reticle Following Filtered Fingertip -->
@@ -396,134 +370,7 @@
             </div>
           </div>
         </section>
-
-        <!-- Floating Tactical Tuning Drawer (Right Side) -->
-        <aside class="jarvis-tuning-dock" id="tuningDock">
-          <!-- Tuning Header -->
-          <div class="dock-header">
-            <span class="dock-title">TACTICAL CONTROLS</span>
-            <span class="dock-sub">ADAPTIVE TUNING</span>
-          </div>
-
-          <!-- Jitter & Smoothing Tuning -->
-          <div class="dock-card">
-            <div class="control-row">
-              <span class="control-label">JITTER FILTERING (1€)</span>
-              <span class="control-val font-mono" id="smoothingVal">0.35</span>
-            </div>
-            <input type="range" id="smoothingSlider" min="0.05" max="0.85" step="0.05" value="0.35" class="jarvis-slider" />
-            <div class="slider-endpoints">
-              <span>SNAPPY</span>
-              <span>BALANCED</span>
-              <span>ULTRA-SMOOTH</span>
-            </div>
-          </div>
-
-          <!-- Rotation Sensitivity Tuning -->
-          <div class="dock-card">
-            <div class="control-row">
-              <span class="control-label">ROTATION GAIN</span>
-              <span class="control-val font-mono" id="rotationVal">1.6x</span>
-            </div>
-            <input type="range" id="rotationSlider" min="0.4" max="3.5" step="0.2" value="1.6" class="jarvis-slider" />
-            <div class="slider-endpoints">
-              <span>SUBTLE</span>
-              <span>1.6x</span>
-              <span>AGGRESSIVE</span>
-            </div>
-          </div>
-
-          <!-- System Toggles -->
-          <div class="dock-card toggles-card">
-            <label class="jarvis-toggle">
-              <input type="checkbox" id="toggleGestureControl" checked>
-              <span class="toggle-rail"></span>
-              <span class="toggle-title">NEURAL GESTURE TRACKING</span>
-            </label>
-
-            <label class="jarvis-toggle">
-              <input type="checkbox" id="toggleOrbitControls" checked>
-              <span class="toggle-rail"></span>
-              <span class="toggle-title">MOUSE ORBIT FALLBACK</span>
-            </label>
-
-            <label class="jarvis-toggle">
-              <input type="checkbox" id="togglePipWebcam" checked>
-              <span class="toggle-rail"></span>
-              <span class="toggle-title">HOLOGRAPHIC SCANNER PIP</span>
-            </label>
-          </div>
-
-          <!-- Tactical Gesture Command Guide -->
-          <div class="dock-card command-guide-card">
-            <div class="guide-header">GESTURE COMMAND MATRIX</div>
-            <div class="command-grid">
-              <div class="cmd-item">
-                <span class="cmd-icon">🤏</span>
-                <div class="cmd-desc">
-                  <strong>PINCH TO GRAB</strong>
-                  <span>Drag, reposition & rotate target</span>
-                </div>
-              </div>
-
-              <div class="cmd-item">
-                <span class="cmd-icon">👆</span>
-                <div class="cmd-desc">
-                  <strong>POINTING</strong>
-                  <span>Raycast hover & inspect target</span>
-                </div>
-              </div>
-
-              <div class="cmd-item">
-                <span class="cmd-icon">🖐️</span>
-                <div class="cmd-desc">
-                  <strong>OPEN PALM</strong>
-                  <span>Release & particle shockwave burst</span>
-                </div>
-              </div>
-
-              <div class="cmd-item">
-                <span class="cmd-icon">✊</span>
-                <div class="cmd-desc">
-                  <strong>FIST</strong>
-                  <span>Freeze particle field in crystal state</span>
-                </div>
-              </div>
-
-              <div class="cmd-item">
-                <span class="cmd-icon">👐</span>
-                <div class="cmd-desc">
-                  <strong>TWO HANDS</strong>
-                  <span>Dynamic proportional zoom & scale</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
       </main>
-
-      <!-- Exhibition Discovery Achievements Modal Dialog -->
-      <div id="achievementsModal" class="jarvis-modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <div class="modal-backdrop" id="modalBackdrop"></div>
-        <div class="modal-card">
-          <div class="modal-header">
-            <div class="modal-title-group">
-              <span class="modal-tag">STUDENT EXHIBITION PROGRESS</span>
-              <h3 id="modalTitle" class="modal-title">DISCOVERY ACHIEVEMENTS</h3>
-            </div>
-            <button id="closeModalBtn" class="pip-minimize-btn" type="button">✕</button>
-          </div>
-          <div class="modal-body">
-            <div class="achievements-grid" id="achievementsGrid">
-              <!-- Dynamically populated from educationalData.js -->
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button id="resetProgressBtn" class="jarvis-btn btn-ghost btn-sm" type="button">RESET EXHIBITION PROGRESS</button>
-            <button id="closeModalBtn2" class="jarvis-btn btn-engage btn-sm" type="button">CLOSE</button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

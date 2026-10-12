@@ -254,6 +254,12 @@ export class InteractionController {
   }
 
   _onGrabStart(target) {
+    if (this.sm.activeTool === 'WEB_SHOOTER') {
+      this.sm.shootWebToSelected();
+    } else if (this.sm.activeTool === 'ENERGY_BLASTER') {
+      this.sm.launchProjectileAtCursor();
+    }
+
     this.heldObject = target;
     this.targetPos.copy(target.position);
     this.targetScale.copy(target.scale);
@@ -284,6 +290,11 @@ export class InteractionController {
 
   _onGrabRelease(target) {
     if (this.heldObject) {
+      // Calculate and transfer gentle release inertia to object physics
+      if (this.heldObject.userData && this.heldObject.userData.velocity) {
+        const releaseVel = new THREE.Vector3().subVectors(this.targetPos, this.heldObject.position).multiplyScalar(3.2);
+        this.heldObject.userData.velocity.copy(releaseVel);
+      }
       this.sm.setSelectedObject(this.heldObject, false);
       this.heldObject = null;
     }

@@ -1,7 +1,7 @@
 /**
- * GestureFlow — Interactive Science Universe
- * Three.js Scene Manager with Cinematic Holographic Aesthetics, Zero-GC Math,
- * Matter Manipulation Engine, Science Modules Manager & Holographic Energy Tether.
+ * GestureFlow Reality Engine — Three.js Scene Manager
+ * Master 3D Sandbox Environment hosting SpawnManager, Superhero WebSystem,
+ * Energy ProjectileEngine, PhysicsSimulator, UndoManager & MatterEngine.
  */
 
 import * as THREE from 'three';
@@ -9,6 +9,17 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MatterEngine, MATTER_SHAPES } from './matterEngine.js';
 import { EnergyBeamRenderer } from './energyBeamRenderer.js';
 import { ScienceModulesManager } from './scienceModules.js';
+import { SpawnManager } from './spawnManager.js';
+import { WebSystem } from './webSystem.js';
+import { ProjectileEngine } from './projectileEngine.js';
+import { PhysicsSimulator } from './physicsSimulator.js';
+import { UndoManager } from './undoManager.js';
+
+export const REALITY_TOOLS = {
+  MANIPULATE: 'MANIPULATE',
+  WEB_SHOOTER: 'WEB_SHOOTER',
+  ENERGY_BLASTER: 'ENERGY_BLASTER'
+};
 
 export class SceneManager {
   constructor(canvasContainer) {
@@ -22,24 +33,20 @@ export class SceneManager {
     this.renderer = null;
     this.controls = null;
 
-    // Pre-allocated Zero-GC Math Scratchpad
+    // Zero-GC Math Scratchpad
     this._v1 = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
     this._q1 = new THREE.Quaternion();
     this._m1 = new THREE.Matrix4();
 
     // Camera Navigation Lerp Target
-    this.targetCameraPos = new THREE.Vector3(0, 1.2, 5.8);
-    this.targetCameraLookAt = new THREE.Vector3(0, 0.2, 0);
+    this.targetCameraPos = new THREE.Vector3(0, 1.4, 6.2);
+    this.targetCameraLookAt = new THREE.Vector3(0, 0.3, 0);
 
     // Interactive Meshes for Raycasting
     this.interactiveObjects = [];
-    this.defaultShapesGroup = new THREE.Group();
-    this.cube = null;
-    this.sphere = null;
-    this.torus = null;
 
-    // Ambient Holographic Dust Particles
+    // Ambient Dust Particles
     this.particles = null;
 
     // Initial state storage for instant scene reset
@@ -54,11 +61,19 @@ export class SceneManager {
     this.hoveredObject = null;
     this.selectedObject = null;
 
-    // Specialized Sub-Engines
+    // Reality Engine Subsystems
+    this.spawnManager = null;
+    this.webSystem = null;
+    this.projectileEngine = null;
+    this.physicsSimulator = null;
+    this.undoManager = null;
     this.matterEngine = null;
     this.energyBeam = null;
     this.scienceModules = null;
-    this.activeModuleId = 'matter';
+
+    // Active Sandbox Tool
+    this.activeTool = REALITY_TOOLS.MANIPULATE;
+    this.activeModuleId = 'sandbox';
 
     this.clock = new THREE.Clock();
 
@@ -68,14 +83,14 @@ export class SceneManager {
   _init() {
     // 1. Scene with Deep Midnight Space & Depth Fog
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x04060a);
-    this.scene.fog = new THREE.FogExp2(0x04060a, 0.032);
+    this.scene.background = new THREE.Color(0x03060c);
+    this.scene.fog = new THREE.FogExp2(0x03060c, 0.028);
 
     // 2. Camera Setup (Optimized FOV for spatial manipulation)
     const aspect = this.width / this.height;
     this.camera = new THREE.PerspectiveCamera(46, aspect, 0.1, 100);
-    this.camera.position.set(0, 1.2, 5.8);
-    this.camera.lookAt(0, 0.2, 0);
+    this.camera.position.set(0, 1.4, 6.2);
+    this.camera.lookAt(0, 0.3, 0);
 
     // 3. WebGL Renderer with High-Performance Tone Mapping
     this.renderer = new THREE.WebGLRenderer({
@@ -89,7 +104,7 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.18;
     this.container.appendChild(this.renderer.domElement);
 
     // 4. OrbitControls (Mouse Fallback)
@@ -97,44 +112,47 @@ export class SceneManager {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.06;
     this.controls.maxPolarAngle = Math.PI / 2 + 0.04;
-    this.controls.minDistance = 2.5;
+    this.controls.minDistance = 2.0;
     this.controls.maxDistance = 28;
-    this.controls.target.set(0, 0.2, 0);
+    this.controls.target.set(0, 0.3, 0);
 
     // 5. Lighting Environment
     this._setupLighting();
 
-    // 6. Cybernetic Floor Grid & Holographic Particles
+    // 6. Cybernetic Floor Grid & Ambient Particles
     this._setupEnvironment();
 
-    // 7. Signature Feature: Matter Manipulation Particle Engine
-    this.matterEngine = new MatterEngine(this.scene);
+    // 7. Reality Engine Subsystems
+    this.spawnManager = new SpawnManager(this.scene);
+    this.webSystem = new WebSystem(this.scene);
+    this.projectileEngine = new ProjectileEngine(this.scene);
+    this.physicsSimulator = new PhysicsSimulator();
+    this.undoManager = new UndoManager(this.spawnManager);
 
-    // 8. Holographic Energy Tether Beam
+    // 8. Signature Matter Manipulation Particle Engine
+    this.matterEngine = new MatterEngine(this.scene);
+    this.matterEngine.setVisible(false);
+
+    // 9. Holographic Energy Tether Beam
     this.energyBeam = new EnergyBeamRenderer(this.scene);
 
-    // 9. Science Modules Manager (Solar System, Anatomy, Chemistry, Geometry, Earth)
+    // 10. Science Modules Manager
     this.scienceModules = new ScienceModulesManager(this);
-
-    // 10. Default Legacy Shapes (Preserved for compatibility)
-    this._createLegacyObjects();
 
     // 11. JARVIS 3D Target Reticle
     this._createJarvisReticle();
 
-    // Set initial mode to Matter Manipulation Studio
-    this.setMode('matter');
+    // Spawn default initial sandbox objects so first-time users immediately see content!
+    this._spawnDefaultSandboxObjects();
 
     // 12. Resize listener
     window.addEventListener('resize', () => this.resize());
   }
 
   _setupLighting() {
-    // Subtle ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     this.scene.add(ambientLight);
 
-    // Main Directional Key Light with soft shadow
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
     keyLight.position.set(4.5, 8.5, 5.5);
     keyLight.castShadow = true;
@@ -142,31 +160,23 @@ export class SceneManager {
     keyLight.shadow.mapSize.height = 1024;
     keyLight.shadow.camera.near = 1.0;
     keyLight.shadow.camera.far = 25;
-    keyLight.shadow.camera.left = -6.5;
-    keyLight.shadow.camera.right = 6.5;
-    keyLight.shadow.camera.top = 6.5;
-    keyLight.shadow.camera.bottom = -6.5;
     keyLight.shadow.bias = -0.0006;
     this.scene.add(keyLight);
 
-    // Ice-Blue Tactical Fill Light (Left)
     const fillLightCyan = new THREE.PointLight(0x00f0ff, 2.8, 16);
     fillLightCyan.position.set(-5.5, 3.2, 3.0);
     this.scene.add(fillLightCyan);
 
-    // Electric Emerald Accent Light (Right)
     const fillLightEmerald = new THREE.PointLight(0x00f59b, 2.5, 16);
     fillLightEmerald.position.set(5.5, 3.2, 3.0);
     this.scene.add(fillLightEmerald);
 
-    // Violet Rim Light (Rear)
     const rimLight = new THREE.DirectionalLight(0xa855f7, 1.2);
     rimLight.position.set(0, 5, -8);
     this.scene.add(rimLight);
   }
 
   _setupEnvironment() {
-    // Shadow Receiver Ground Plane
     const groundGeo = new THREE.PlaneGeometry(36, 36);
     const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -175,14 +185,12 @@ export class SceneManager {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    // Fine Technical Perspective Grid
     const gridHelper = new THREE.GridHelper(24, 32, 0x00f0ff, 0x111c2e);
     gridHelper.position.y = -1.34;
     gridHelper.material.opacity = 0.22;
     gridHelper.material.transparent = true;
     this.scene.add(gridHelper);
 
-    // Ambient Floating Cosmic Dust
     const particleCount = 140;
     const posArray = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount * 3; i += 3) {
@@ -204,72 +212,40 @@ export class SceneManager {
     this.scene.add(this.particles);
   }
 
-  _createLegacyObjects() {
-    this.defaultShapesGroup.name = 'Legacy Shapes Group';
-    this.scene.add(this.defaultShapesGroup);
+  _spawnDefaultSandboxObjects() {
+    // Spawn 3 default objects: Cube, Arc Sphere, Kyber Crystal
+    const cube = this.spawnManager.spawn({
+      id: 'shape_cube',
+      name: 'Quantum Cube',
+      type: 'cube',
+      color: 0x00f0ff
+    }, new THREE.Vector3(-2.2, 0.4, 0));
 
-    // Quantum Cube
-    const cubeGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5, 2, 2, 2);
-    const cubeMat = new THREE.MeshPhysicalMaterial({
-      color: 0x162032,
-      metalness: 0.75,
-      roughness: 0.22,
-      clearcoat: 0.5
-    });
-    this.cube = new THREE.Mesh(cubeGeo, cubeMat);
-    this.cube.name = 'Quantum Cube';
-    this.cube.position.set(-2.8, 0.35, 0);
-    this.cube.userData = { defaultColor: 0x162032, accentColor: 0x00f0ff, baseScale: new THREE.Vector3(1, 1, 1) };
-    this.defaultShapesGroup.add(this.cube);
+    const sphere = this.spawnManager.spawn({
+      id: 'shape_sphere',
+      name: 'Arc Sphere',
+      type: 'sphere',
+      color: 0x00f59b
+    }, new THREE.Vector3(0, 0.4, 0));
 
-    // Arc Reactor Sphere
-    const sphereGeo = new THREE.SphereGeometry(1.0, 48, 48);
-    const sphereMat = new THREE.MeshPhysicalMaterial({
-      color: 0x064e3b,
-      metalness: 0.25,
-      roughness: 0.12,
-      clearcoat: 0.8
-    });
-    this.sphere = new THREE.Mesh(sphereGeo, sphereMat);
-    this.sphere.name = 'Arc Reactor Sphere';
-    this.sphere.position.set(0, 0.35, 0);
-    this.sphere.userData = { defaultColor: 0x064e3b, accentColor: 0x00f59b, baseScale: new THREE.Vector3(1, 1, 1) };
-    this.defaultShapesGroup.add(this.sphere);
+    const crystal = this.spawnManager.spawn({
+      id: 'obj_crystal',
+      name: 'Kyber Crystal',
+      type: 'crystal',
+      color: 0xa855f7
+    }, new THREE.Vector3(2.2, 0.4, 0));
 
-    // Torus Accelerator
-    const torusGeo = new THREE.TorusGeometry(1.0, 0.35, 32, 64);
-    const torusMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0369a1,
-      metalness: 0.85,
-      roughness: 0.18,
-      clearcoat: 0.6
-    });
-    this.torus = new THREE.Mesh(torusGeo, torusMat);
-    this.torus.name = 'Torus Accelerator';
-    this.torus.position.set(2.8, 0.35, 0);
-    this.torus.userData = { defaultColor: 0x0369a1, accentColor: 0x00f0ff, baseScale: new THREE.Vector3(1, 1, 1) };
-    this.defaultShapesGroup.add(this.torus);
-
-    // Cache initial transforms
-    [this.cube, this.sphere, this.torus].forEach(obj => {
-      this.initialTransforms.set(obj.uuid, {
-        position: obj.position.clone(),
-        rotation: obj.rotation.clone(),
-        scale: obj.scale.clone()
-      });
-    });
+    this.setSelectedObject(sphere, false);
+    this._syncInteractiveObjects();
   }
 
   _createJarvisReticle() {
     this.virtualCursor3D = new THREE.Group();
 
-    // Central aiming dot
     const dotGeo = new THREE.SphereGeometry(0.065, 16, 16);
     const dotMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const dot = new THREE.Mesh(dotGeo, dotMat);
-    this.virtualCursor3D.add(dot);
+    this.virtualCursor3D.add(new THREE.Mesh(dotGeo, dotMat));
 
-    // Inner Targeting Ring
     const innerRingGeo = new THREE.RingGeometry(0.14, 0.17, 32);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
@@ -280,7 +256,6 @@ export class SceneManager {
     this.reticleInner = new THREE.Mesh(innerRingGeo, ringMat);
     this.virtualCursor3D.add(this.reticleInner);
 
-    // Outer Segmented Brackets
     const outerRingGeo = new THREE.RingGeometry(0.24, 0.27, 4, 1, 0.2, 1.1);
     this.reticleOuter = new THREE.Group();
     for (let i = 0; i < 4; i++) {
@@ -296,8 +271,106 @@ export class SceneManager {
   }
 
   // =========================================================================
-  // MODULE SWITCHING & CAMERA ORCHESTRATION
+  // SANDBOX ACTIONS: SPAWN, DUPLICATE, REMOVE, WEBS, PROJECTILES
   // =========================================================================
+
+  spawnInventoryItem(itemDef) {
+    // If spawning particle tools, activate Matter Engine
+    if (itemDef.type === 'particle_cloud' || itemDef.type === 'particle_galaxy') {
+      this.matterEngine.setVisible(true);
+      if (itemDef.type === 'particle_galaxy') {
+        this.matterEngine.morphTo(MATTER_SHAPES.GALAXY);
+      } else {
+        this.matterEngine.morphTo(MATTER_SHAPES.CLOUD);
+      }
+      this.setSelectedObject(this.matterEngine.root, false);
+      this._syncInteractiveObjects();
+      return this.matterEngine.root;
+    }
+
+    // Spawn 3D entity at center or offset
+    const spawnPos = new THREE.Vector3(
+      (Math.random() - 0.5) * 1.5,
+      0.5 + Math.random() * 0.5,
+      (Math.random() - 0.5) * 0.8
+    );
+    const obj = this.spawnManager.spawn(itemDef, spawnPos);
+    this.undoManager.record('SPAWN', { object: obj });
+    this.setSelectedObject(obj, false);
+    this._syncInteractiveObjects();
+    return obj;
+  }
+
+  duplicateSelected() {
+    if (!this.selectedObject || !this.selectedObject.userData.isRealityObject) return null;
+    const clone = this.spawnManager.duplicate(this.selectedObject);
+    if (clone) {
+      this.undoManager.record('SPAWN', { object: clone });
+      this.setSelectedObject(clone, false);
+      this._syncInteractiveObjects();
+    }
+    return clone;
+  }
+
+  deleteSelected() {
+    if (!this.selectedObject || !this.selectedObject.userData.isRealityObject) return;
+    const obj = this.selectedObject;
+    this.undoManager.record('DELETE', {
+      itemDef: obj.userData.itemDef,
+      position: obj.position.clone()
+    });
+    this.spawnManager.remove(obj);
+    this.selectedObject = null;
+    this.hoveredObject = null;
+    this._syncInteractiveObjects();
+  }
+
+  undo() {
+    const undone = this.undoManager.undo();
+    this._syncInteractiveObjects();
+    return undone;
+  }
+
+  clearScene() {
+    this.spawnManager.clearAll();
+    this.webSystem.clearAll();
+    this.projectileEngine.clearAll();
+    this.matterEngine.setVisible(false);
+    this.scienceModules.clearActiveModule();
+    this.selectedObject = null;
+    this.hoveredObject = null;
+    this.energyBeam.hide();
+    this.undoManager.clear();
+    this._syncInteractiveObjects();
+  }
+
+  shootWebToSelected() {
+    if (!this.selectedObject || !this.virtualCursor3D) return null;
+    const strand = this.webSystem.shootWeb(this.virtualCursor3D.position, this.selectedObject);
+    return strand;
+  }
+
+  launchProjectileAtCursor() {
+    if (!this.virtualCursor3D) return null;
+    const origin = this.virtualCursor3D.position.clone();
+    origin.z -= 0.2;
+    // Launch forward along camera view vector
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    const bolt = this.projectileEngine.launch(origin, dir, 0x00f0ff);
+    return bolt;
+  }
+
+  _syncInteractiveObjects() {
+    const list = [...this.spawnManager.spawnedObjects];
+    if (this.matterEngine && this.matterEngine.root.visible) {
+      list.push(this.matterEngine.root);
+    }
+    if (this.scienceModules && this.scienceModules.interactiveObjects.length > 0) {
+      list.push(...this.scienceModules.interactiveObjects);
+    }
+    this.interactiveObjects = list;
+  }
 
   setMode(moduleId) {
     this.activeModuleId = moduleId;
@@ -305,24 +378,25 @@ export class SceneManager {
     this.hoveredObject = null;
     this.selectedObject = null;
 
-    if (moduleId === 'matter') {
-      // Signature Matter Manipulation Studio
-      this.defaultShapesGroup.visible = false;
-      this.matterEngine.setVisible(true);
+    if (moduleId === 'sandbox') {
+      this.matterEngine.setVisible(false);
       this.scienceModules.clearActiveModule();
-      this.setInteractiveObjects([this.matterEngine.root]);
-      this.setSelectedObject(this.matterEngine.root, false);
+      this.spawnManager.rootGroup.visible = true;
+      this.targetCameraPos.set(0, 1.4, 6.2);
+      this.targetCameraLookAt.set(0, 0.3, 0);
 
+    } else if (moduleId === 'matter') {
+      this.spawnManager.rootGroup.visible = false;
+      this.scienceModules.clearActiveModule();
+      this.matterEngine.setVisible(true);
       this.targetCameraPos.set(0, 1.2, 5.8);
       this.targetCameraLookAt.set(0, 0.1, 0);
 
     } else {
-      // Activate dedicated science module
-      this.defaultShapesGroup.visible = false;
+      this.spawnManager.rootGroup.visible = false;
       this.matterEngine.setVisible(false);
       this.scienceModules.activateModule(moduleId);
 
-      // Tailored camera viewpoints per scientific domain
       switch (moduleId) {
         case 'solar':
           this.targetCameraPos.set(0, 9.5, 17.0);
@@ -345,24 +419,12 @@ export class SceneManager {
           this.targetCameraLookAt.set(0, 0, 0);
           break;
       }
-
-      // Default select the first available interactive object
-      if (this.interactiveObjects.length > 0) {
-        this.setSelectedObject(this.interactiveObjects[0], false);
-      }
     }
-  }
 
-  setInteractiveObjects(objects = []) {
-    this.interactiveObjects = objects;
-    this.initialTransforms.clear();
-    objects.forEach(obj => {
-      this.initialTransforms.set(obj.uuid, {
-        position: obj.position.clone(),
-        rotation: obj.rotation.clone(),
-        scale: obj.scale.clone()
-      });
-    });
+    this._syncInteractiveObjects();
+    if (this.interactiveObjects.length > 0) {
+      this.setSelectedObject(this.interactiveObjects[0], false);
+    }
   }
 
   // =========================================================================
@@ -380,28 +442,26 @@ export class SceneManager {
     this.virtualCursor3D.position.copy(worldPoint);
     this.virtualCursor3D.quaternion.copy(this.camera.quaternion);
 
-    // Color & scale modulation
     const innerMat = this.reticleInner.material;
     if (state === 'GRABBING' || state === 'GRAB' || state === 'DRAGGING') {
-      innerMat.color.setHex(0x00f59b); // Emerald
+      innerMat.color.setHex(0x00f59b);
       this.virtualCursor3D.scale.set(1.25, 1.25, 1.25);
 
-      // Active energy tether from cursor to held object
       if (this.selectedObject) {
         this.energyBeam.update(worldPoint, this.selectedObject.position, this.clock.getElapsedTime());
       }
     } else if (state === 'SCALING') {
-      innerMat.color.setHex(0xffb800); // Gold
+      innerMat.color.setHex(0xffb800);
       this.virtualCursor3D.scale.set(1.4, 1.4, 1.4);
       if (this.selectedObject) {
         this.energyBeam.update(worldPoint, this.selectedObject.position, this.clock.getElapsedTime());
       }
     } else if (state === 'FROZEN') {
-      innerMat.color.setHex(0xa855f7); // Violet
+      innerMat.color.setHex(0xa855f7);
       this.virtualCursor3D.scale.set(1.0, 1.0, 1.0);
       this.energyBeam.hide();
     } else {
-      innerMat.color.setHex(0x00f0ff); // Ice Cyan
+      innerMat.color.setHex(0x00f0ff);
       this.virtualCursor3D.scale.set(1.0, 1.0, 1.0);
       this.energyBeam.hide();
     }
@@ -434,7 +494,6 @@ export class SceneManager {
   _applyVisualState(obj, state) {
     if (!obj) return;
 
-    // Apply to mesh or traverse children
     const applyToMesh = (m) => {
       if (m.material && m.material.emissive) {
         if (state === 'GRABBED') {
@@ -460,42 +519,11 @@ export class SceneManager {
   }
 
   resetScene() {
-    this.interactiveObjects.forEach(obj => {
-      const init = this.initialTransforms.get(obj.uuid);
-      if (init) {
-        obj.position.copy(init.position);
-        obj.rotation.copy(init.rotation);
-        obj.scale.copy(init.scale);
-        this._applyVisualState(obj, 'DEFAULT');
-      }
-    });
-
-    this.hoveredObject = null;
-    this.selectedObject = null;
-    this.energyBeam.hide();
-
-    this.controls.target.copy(this.targetCameraLookAt);
-    this.camera.position.copy(this.targetCameraPos);
+    this.clearScene();
+    this._spawnDefaultSandboxObjects();
+    this.controls.target.set(0, 0.3, 0);
+    this.camera.position.set(0, 1.4, 6.2);
     this.controls.update();
-  }
-
-  cycleShapeFocus() {
-    if (this.activeModuleId === 'matter') {
-      const nextShape = this.matterEngine.cycleNextShape();
-      return { name: nextShape, isMatterShape: true };
-    }
-
-    if (this.interactiveObjects.length === 0) return null;
-
-    let nextIndex = 0;
-    if (this.selectedObject) {
-      const currentIndex = this.interactiveObjects.indexOf(this.selectedObject);
-      nextIndex = (currentIndex + 1) % this.interactiveObjects.length;
-    }
-
-    const nextObj = this.interactiveObjects[nextIndex];
-    this.setSelectedObject(nextObj, false);
-    return nextObj;
   }
 
   // =========================================================================
@@ -510,25 +538,42 @@ export class SceneManager {
     this.camera.position.lerp(this.targetCameraPos, 0.045);
     this.controls.target.lerp(this.targetCameraLookAt, 0.045);
 
-    // Update active sub-engines
-    if (this.activeModuleId === 'matter' && this.matterEngine) {
+    const cursorPos = this.virtualCursor3D && this.virtualCursor3D.visible ? this.virtualCursor3D.position : null;
+
+    // 1. Step virtual physics simulator
+    this.physicsSimulator.step(dt, this.spawnManager.spawnedObjects, this.selectedObject);
+
+    // 2. Update superhero web system
+    this.webSystem.update(dt, cursorPos, elapsed);
+
+    // 3. Update energy projectiles
+    this.projectileEngine.update(dt, this.spawnManager.spawnedObjects);
+
+    // 4. Update procedural spawned entities
+    this.spawnManager.update(dt, elapsed);
+
+    // 5. Update matter particle engine
+    if (this.matterEngine && this.matterEngine.root.visible) {
       this.matterEngine.update(dt, elapsed);
-    } else if (this.scienceModules) {
+    }
+
+    // 6. Update science modules
+    if (this.scienceModules && this.activeModuleId !== 'sandbox' && this.activeModuleId !== 'matter') {
       this.scienceModules.update(dt, elapsed);
     }
 
-    // Animate JARVIS Reticle rings
+    // 7. Reticle ring rotations
     if (this.virtualCursor3D && this.virtualCursor3D.visible) {
       this.reticleInner.rotation.z += 0.025;
       this.reticleOuter.rotation.z -= 0.015;
     }
 
-    // Gentle ambient dust particle drift
+    // 8. Ambient dust drift
     if (this.particles) {
       this.particles.rotation.y = elapsed * 0.018;
     }
 
-    // Update orbit controls
+    // 9. Orbit controls update
     if (this.controls && this.controls.enabled) {
       this.controls.update();
     }

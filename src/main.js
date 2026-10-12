@@ -1,22 +1,22 @@
 /**
- * GestureFlow — Interactive Science Universe
+ * GestureFlow — Reality Engine 3D Sandbox
  * Master Application Coordinator & Performance Decoupler
  * Separates ML inference from 60+ FPS Three.js rendering via VideoFrameScheduler,
  * batches DOM updates, provides real-time diagnostic telemetry, voice guidance,
- * Matter Manipulation morphology, and interactive science discovery modules.
+ * procedural 3D asset spawning, superhero web tethering, and energy projectiles.
  */
 
+import * as THREE from 'three';
 import { CameraManager } from './modules/camera.js';
 import { HandDetector } from './modules/handDetector.js';
 import { LandmarkRenderer } from './modules/landmarkRenderer.js';
 import { TelemetryManager } from './modules/telemetry.js';
-import { SceneManager } from './modules/sceneManager.js';
+import { SceneManager, REALITY_TOOLS } from './modules/sceneManager.js';
 import { GestureDetector } from './modules/gestureDetector.js';
 import { InteractionController } from './modules/interactionController.js';
 import { VideoFrameScheduler } from './modules/videoScheduler.js';
 import { SpeechManager } from './modules/speechManager.js';
-import { EDUCATIONAL_CONTENT, ACHIEVEMENTS } from './modules/educationalData.js';
-import { MATTER_SHAPES } from './modules/matterEngine.js';
+import { INVENTORY_ITEMS, INVENTORY_CATEGORIES } from './modules/inventoryData.js';
 import { INTERACTION_STATES } from './modules/gestureStateMachine.js';
 import {
   TRACKING_STATES,
@@ -24,7 +24,7 @@ import {
   DEFAULT_SETTINGS
 } from './modules/constants.js';
 
-class JarvisGestureStudio {
+class JarvisRealityStudio {
   constructor() {
     // DOM Element Cache
     this.dom = {
@@ -36,13 +36,6 @@ class JarvisGestureStudio {
       // Header & Tactical Core
       globalBeacon: document.getElementById('globalBeacon'),
       headerActiveDomainLabel: document.getElementById('headerActiveDomainLabel'),
-      toggleVoiceBtn: document.getElementById('toggleVoiceBtn'),
-      voiceBtnText: document.getElementById('voiceBtnText'),
-      achievementsBtn: document.getElementById('achievementsBtn'),
-      achievementsBadgeLabel: document.getElementById('achievementsBadgeLabel'),
-      toggleGestureBtn: document.getElementById('toggleGestureBtn'),
-      gestureBtnText: document.getElementById('gestureBtnText'),
-      resetSceneBtn: document.getElementById('resetSceneBtn'),
       mirrorToggleBtn: document.getElementById('mirrorToggleBtn'),
       mirrorBtnLabel: document.getElementById('mirrorBtnLabel'),
       fullscreenBtn: document.getElementById('fullscreenBtn'),
@@ -51,62 +44,50 @@ class JarvisGestureStudio {
       toggleCameraBtn: document.getElementById('toggleCameraBtn'),
       cameraBtnText: document.getElementById('cameraBtnText'),
 
-      // Science Modules Tabs
-      tabMatter: document.getElementById('tabMatter'),
-      tabSolar: document.getElementById('tabSolar'),
-      tabAnatomy: document.getElementById('tabAnatomy'),
-      tabChemistry: document.getElementById('tabChemistry'),
-      tabGeometry: document.getElementById('tabGeometry'),
-      tabEarth: document.getElementById('tabEarth'),
+      // Reality Tools Matrix
+      toolManipulate: document.getElementById('toolManipulate'),
+      toolWeb: document.getElementById('toolWeb'),
+      toolBlaster: document.getElementById('toolBlaster'),
 
-      // Contextual Domain Quick Bars
-      domainQuickBar: document.getElementById('domainQuickBar'),
-      matterChipsGroup: document.getElementById('matterChipsGroup'),
-      solarControlsGroup: document.getElementById('solarControlsGroup'),
-      chipCloud: document.getElementById('chipCloud'),
-      chipSphere: document.getElementById('chipSphere'),
-      chipCube: document.getElementById('chipCube'),
-      chipTorus: document.getElementById('chipTorus'),
-      chipGalaxy: document.getElementById('chipGalaxy'),
-      chipSolarSys: document.getElementById('chipSolarSys'),
+      // Global Sandbox Controls
+      toggleInventoryBtn: document.getElementById('toggleInventoryBtn'),
+      inventoryBtnLabel: document.getElementById('inventoryBtnLabel'),
+      undoBtn: document.getElementById('undoBtn'),
+      clearSceneBtn: document.getElementById('clearSceneBtn'),
+      resetSceneBtn: document.getElementById('resetSceneBtn'),
 
-      // Solar Speed Buttons
-      speed1x: document.getElementById('speed1x'),
-      speed2x: document.getElementById('speed2x'),
-      speed5x: document.getElementById('speed5x'),
-      speedPause: document.getElementById('speedPause'),
+      // First-Use Tutorial Banner
+      tutorialBanner: document.getElementById('tutorialBanner'),
+      dismissTutorialBtn: document.getElementById('dismissTutorialBtn'),
 
-      // Educational HUD Card
-      educationalHudCard: document.getElementById('educationalHudCard'),
-      hudCategoryLabel: document.getElementById('hudCategoryLabel'),
-      hudStatePill: document.getElementById('hudStatePill'),
-      hudObjectVal: document.getElementById('hudObjectVal'),
-      hudObjectDesc: document.getElementById('hudObjectDesc'),
-      educationalMetricsGrid: document.getElementById('educationalMetricsGrid'),
-      challengeMissionBox: document.getElementById('challengeMissionBox'),
-      challengeStatus: document.getElementById('challengeStatus'),
-      challengeTitle: document.getElementById('challengeTitle'),
-      challengeDesc: document.getElementById('challengeDesc'),
-      educationalScaleTag: document.getElementById('educationalScaleTag'),
+      // Floating Inventory Drawer
+      inventoryDrawer: document.getElementById('inventoryDrawer'),
+      closeInventoryBtn: document.getElementById('closeInventoryBtn'),
+      inventorySearchInput: document.getElementById('inventorySearchInput'),
+      inventoryCatTabs: document.getElementById('inventoryCatTabs'),
+      inventoryItemsGrid: document.getElementById('inventoryItemsGrid'),
 
-      hudTargetX: document.getElementById('hudTargetX'),
-      hudTargetY: document.getElementById('hudTargetY'),
-      hudTargetZ: document.getElementById('hudTargetZ'),
-      hudGestureBadge: document.getElementById('hudGestureBadge'),
-      hudGestureIcon: document.getElementById('hudGestureIcon'),
-      hudGestureVal: document.getElementById('hudGestureVal'),
+      // Selected Object Inspector
+      objectInspectorCard: document.getElementById('objectInspectorCard'),
+      inspectorItemName: document.getElementById('inspectorItemName'),
+      inspectorCoords: document.getElementById('inspectorCoords'),
+      inspectorPhysicsToggle: document.getElementById('inspectorPhysicsToggle'),
+      inspectorDuplicateBtn: document.getElementById('inspectorDuplicateBtn'),
+      inspectorWebBtn: document.getElementById('inspectorWebBtn'),
+      inspectorDeleteBtn: document.getElementById('inspectorDeleteBtn'),
 
       // Live Subtitles Bar
       subtitlesBar: document.getElementById('subtitlesBar'),
       subtitlesText: document.getElementById('subtitlesText'),
 
-      // Achievements Modal Dialog
-      achievementsModal: document.getElementById('achievementsModal'),
-      modalBackdrop: document.getElementById('modalBackdrop'),
-      closeModalBtn: document.getElementById('closeModalBtn'),
-      closeModalBtn2: document.getElementById('closeModalBtn2'),
-      resetProgressBtn: document.getElementById('resetProgressBtn'),
-      achievementsGrid: document.getElementById('achievementsGrid'),
+      // Telemetry Top Right
+      perfDegradedTag: document.getElementById('perfDegradedTag'),
+      cardRenderFps: document.getElementById('cardRenderFps'),
+      cardLatency: document.getElementById('cardLatency'),
+      cardHandsCount: document.getElementById('cardHandsCount'),
+      hudGestureBadge: document.querySelector('.hud-gesture-badge-compact'),
+      hudGestureIcon: document.getElementById('hudGestureIcon'),
+      hudGestureVal: document.getElementById('hudGestureVal'),
 
       // Diagnostics Panel HUD
       diagnosticsPanel: document.getElementById('diagnosticsPanel'),
@@ -115,11 +96,9 @@ class JarvisGestureStudio {
       diagSchedulerType: document.getElementById('diagSchedulerType'),
       diagStreamAdvancing: document.getElementById('diagStreamAdvancing'),
       diagFrameAge: document.getElementById('diagFrameAge'),
-      diagTimeSinceInf: document.getElementById('diagTimeSinceInf'),
       diagInfDuration: document.getElementById('diagInfDuration'),
       diagInferring: document.getElementById('diagInferring'),
       diagConsecErrors: document.getElementById('diagConsecErrors'),
-      diagSkippedFrames: document.getElementById('diagSkippedFrames'),
       diagCondition: document.getElementById('diagCondition'),
       diagRenderFps: document.getElementById('diagRenderFps'),
       diagDelegate: document.getElementById('diagDelegate'),
@@ -129,12 +108,6 @@ class JarvisGestureStudio {
       threeContainer: document.getElementById('threeCanvasContainer'),
       screenVirtualCursor: document.getElementById('screenVirtualCursor'),
       cursorLabel: document.getElementById('cursorLabel'),
-
-      // Telemetry Top Right
-      perfDegradedTag: document.getElementById('perfDegradedTag'),
-      cardRenderFps: document.getElementById('cardRenderFps'),
-      cardLatency: document.getElementById('cardLatency'),
-      cardHandsCount: document.getElementById('cardHandsCount'),
 
       // Holographic PiP Card
       pipWebcamCard: document.getElementById('pipWebcamCard'),
@@ -152,7 +125,7 @@ class JarvisGestureStudio {
       errorRetryBtn: document.getElementById('errorRetryBtn'),
       pipInferenceRate: document.getElementById('pipInferenceRate'),
 
-      // Tactical Tuning Dock
+      // Tactical Tuning Dock (if present)
       smoothingSlider: document.getElementById('smoothingSlider'),
       smoothingVal: document.getElementById('smoothingVal'),
       rotationSlider: document.getElementById('rotationSlider'),
@@ -184,9 +157,10 @@ class JarvisGestureStudio {
       gestureDetector: this.gestureDetector
     });
 
-    // Student Exhibition Achievements State
-    this.unlockedAchievements = new Set();
-    this._loadAchievements();
+    // Active UI states
+    this.activeCategory = 'all';
+    this.searchQuery = '';
+    this.isInventoryOpen = true;
 
     // Lifecycle & Timing State
     this.isRunning = false;
@@ -211,18 +185,17 @@ class JarvisGestureStudio {
     this._setupResizeHandlers();
     this._syncSettings();
 
-    // Connect Interaction Controller listeners to Educational Engine
+    // Connect Interaction Controller listeners
     this.interactionController.onTargetSelected = (obj) => {
-      this._onObjectInspected(obj);
+      this._updateInspector(obj);
     };
 
     this.interactionController.onGestureTriggered = (action, obj) => {
-      this._onGestureTriggered(action, obj);
+      this._onGestureAction(action, obj);
     };
 
-    // Initialize Default Science Module: Matter Manipulation
-    this.setScienceModule('matter');
-    this._updateAchievementsUI();
+    // Render Initial Inventory Catalog
+    this._renderInventoryGrid();
 
     // Start 60+ FPS Three.js rendering loop immediately
     this._startRenderLoop();
@@ -233,7 +206,7 @@ class JarvisGestureStudio {
   // =========================================================================
 
   _bindEvents() {
-    // 1. Startup Cinematic Experience
+    // 1. Startup Experience
     if (this.dom.startExperienceBtn) {
       this.dom.startExperienceBtn.addEventListener('click', () => this.dismissStartup(true));
     }
@@ -241,92 +214,154 @@ class JarvisGestureStudio {
       this.dom.skipIntroBtn.addEventListener('click', () => this.dismissStartup(false));
     }
 
-    // 2. Science Modules Navigation Tabs
-    const tabMap = [
-      { el: this.dom.tabMatter, mod: 'matter' },
-      { el: this.dom.tabSolar, mod: 'solar' },
-      { el: this.dom.tabAnatomy, mod: 'anatomy' },
-      { el: this.dom.tabChemistry, mod: 'chemistry' },
-      { el: this.dom.tabGeometry, mod: 'geometry' },
-      { el: this.dom.tabEarth, mod: 'earth' }
+    // 2. Tutorial Banner Dismiss
+    if (this.dom.dismissTutorialBtn) {
+      this.dom.dismissTutorialBtn.addEventListener('click', () => {
+        if (this.dom.tutorialBanner) this.dom.tutorialBanner.classList.add('hidden');
+      });
+    }
+
+    // 3. Tool Matrix Buttons
+    const tools = [
+      { el: this.dom.toolManipulate, tool: REALITY_TOOLS.MANIPULATE },
+      { el: this.dom.toolWeb, tool: REALITY_TOOLS.WEB_SHOOTER },
+      { el: this.dom.toolBlaster, tool: REALITY_TOOLS.ENERGY_BLASTER }
     ];
 
-    tabMap.forEach(({ el, mod }) => {
+    tools.forEach(({ el, tool }) => {
       if (el) {
-        el.addEventListener('click', () => this.setScienceModule(mod));
+        el.addEventListener('click', () => this.setActiveTool(tool));
       }
     });
 
-    // 3. Matter Manipulation Morph Chips
-    const morphMap = [
-      { el: this.dom.chipCloud, shape: MATTER_SHAPES.CLOUD },
-      { el: this.dom.chipSphere, shape: MATTER_SHAPES.SPHERE },
-      { el: this.dom.chipCube, shape: MATTER_SHAPES.CUBE },
-      { el: this.dom.chipTorus, shape: MATTER_SHAPES.TORUS },
-      { el: this.dom.chipGalaxy, shape: MATTER_SHAPES.GALAXY },
-      { el: this.dom.chipSolarSys, shape: MATTER_SHAPES.SOLAR_SYSTEM }
-    ];
-
-    morphMap.forEach(({ el, shape }) => {
-      if (el) {
-        el.addEventListener('click', () => this.setMatterShape(shape));
-      }
-    });
-
-    // 4. Solar Simulation Speed Controls
-    if (this.dom.speed1x) {
-      this.dom.speed1x.addEventListener('click', () => this.setSolarSpeed(1.0, this.dom.speed1x));
+    // 4. Inventory Drawer Toggle
+    if (this.dom.toggleInventoryBtn) {
+      this.dom.toggleInventoryBtn.addEventListener('click', () => this.toggleInventory());
     }
-    if (this.dom.speed2x) {
-      this.dom.speed2x.addEventListener('click', () => this.setSolarSpeed(2.5, this.dom.speed2x));
-    }
-    if (this.dom.speed5x) {
-      this.dom.speed5x.addEventListener('click', () => this.setSolarSpeed(5.0, this.dom.speed5x));
-    }
-    if (this.dom.speedPause) {
-      this.dom.speedPause.addEventListener('click', () => this.setSolarSpeed(0.0, this.dom.speedPause));
+    if (this.dom.closeInventoryBtn) {
+      this.dom.closeInventoryBtn.addEventListener('click', () => this.toggleInventory(false));
     }
 
-    // 5. Voice Guidance Toggle
-    if (this.dom.toggleVoiceBtn) {
-      this.dom.toggleVoiceBtn.addEventListener('click', () => {
-        const isVoiceOn = this.speechManager.toggleVoice();
-        this.dom.toggleVoiceBtn.classList.toggle('active', isVoiceOn);
-        this.dom.voiceBtnText.textContent = `VOICE: ${isVoiceOn ? 'ON' : 'OFF'}`;
-        if (isVoiceOn) {
-          this.speechManager.speak('Voice guidance enabled.');
+    // 5. Inventory Search & Category Tabs
+    if (this.dom.inventorySearchInput) {
+      this.dom.inventorySearchInput.addEventListener('input', (e) => {
+        this.searchQuery = e.target.value.toLowerCase().trim();
+        this._renderInventoryGrid();
+      });
+    }
+
+    if (this.dom.inventoryCatTabs) {
+      this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          this.activeCategory = tab.getAttribute('data-cat');
+          this._renderInventoryGrid();
+        });
+      });
+    }
+
+    // 6. Sandbox Action Buttons
+    if (this.dom.undoBtn) {
+      this.dom.undoBtn.addEventListener('click', () => {
+        this.sceneManager.undo();
+        this.speechManager.playChime('release');
+        this.speechManager.speak('Action undone.');
+      });
+    }
+
+    if (this.dom.clearSceneBtn) {
+      this.dom.clearSceneBtn.addEventListener('click', () => {
+        this.sceneManager.clearScene();
+        this.speechManager.playChime('select');
+        this.speechManager.speak('Scene cleared.');
+        this._updateInspector(null);
+      });
+    }
+
+    if (this.dom.resetSceneBtn) {
+      this.dom.resetSceneBtn.addEventListener('click', () => {
+        this.sceneManager.resetScene();
+        this.interactionController.fsm.forceReset();
+        this.speechManager.playChime('select');
+        this.speechManager.speak('Stage reset to default.');
+        this._updateInspector(this.sceneManager.selectedObject);
+      });
+    }
+
+    // 7. Inspector Actions
+    if (this.dom.inspectorDuplicateBtn) {
+      this.dom.inspectorDuplicateBtn.addEventListener('click', () => {
+        const clone = this.sceneManager.duplicateSelected();
+        if (clone) {
+          this.speechManager.playChime('select');
+          this.speechManager.speak(`Cloned ${clone.name}`);
+          this._updateInspector(clone);
         }
       });
     }
 
-    // 6. Achievements Modal Dialog
-    if (this.dom.achievementsBtn) {
-      this.dom.achievementsBtn.addEventListener('click', () => this.openAchievementsModal());
-    }
-    if (this.dom.closeModalBtn) {
-      this.dom.closeModalBtn.addEventListener('click', () => this.closeAchievementsModal());
-    }
-    if (this.dom.closeModalBtn2) {
-      this.dom.closeModalBtn2.addEventListener('click', () => this.closeAchievementsModal());
-    }
-    if (this.dom.modalBackdrop) {
-      this.dom.modalBackdrop.addEventListener('click', () => this.closeAchievementsModal());
-    }
-    if (this.dom.resetProgressBtn) {
-      this.dom.resetProgressBtn.addEventListener('click', () => this.resetAchievements());
+    if (this.dom.inspectorWebBtn) {
+      this.dom.inspectorWebBtn.addEventListener('click', () => {
+        const strand = this.sceneManager.shootWebToSelected();
+        if (strand) {
+          this.speechManager.playChime('morph');
+          this.speechManager.speak('Web strand attached.');
+        }
+      });
     }
 
-    // 7. Camera start/stop
+    if (this.dom.inspectorDeleteBtn) {
+      this.dom.inspectorDeleteBtn.addEventListener('click', () => {
+        this.sceneManager.deleteSelected();
+        this.speechManager.playChime('release');
+        this._updateInspector(null);
+      });
+    }
+
+    if (this.dom.inspectorPhysicsToggle) {
+      this.dom.inspectorPhysicsToggle.addEventListener('change', (e) => {
+        if (this.sceneManager.selectedObject) {
+          this.sceneManager.selectedObject.userData.hasInertia = e.target.checked;
+        }
+      });
+    }
+
+    // 8. Keyboard Shortcuts Fallback
+    window.addEventListener('keydown', (e) => {
+      // Ctrl+Z = Undo
+      if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+        this.sceneManager.undo();
+        this.speechManager.playChime('release');
+      }
+      // 'I' = Toggle Inventory
+      if (e.key.toLowerCase() === 'i' && !e.target.matches('input')) {
+        this.toggleInventory();
+      }
+      // 'W' = Shoot Web
+      if (e.key.toLowerCase() === 'w' && !e.target.matches('input')) {
+        this.sceneManager.shootWebToSelected();
+      }
+      // 'F' or 'Space' = Launch Blaster
+      if ((e.key.toLowerCase() === 'f' || e.code === 'Space') && !e.target.matches('input')) {
+        this.sceneManager.launchProjectileAtCursor();
+      }
+      // Delete = Delete selected
+      if (e.key === 'Delete' && !e.target.matches('input')) {
+        this.sceneManager.deleteSelected();
+        this._updateInspector(null);
+      }
+    });
+
+    // 9. Camera Controls & Overlays
     this.dom.toggleCameraBtn.addEventListener('click', () => this.toggleCamera());
     this.dom.splashStartBtn.addEventListener('click', () => this.toggleCamera());
 
-    // Error retry
     this.dom.errorRetryBtn.addEventListener('click', () => {
       this._hideOverlay(this.dom.errorOverlay);
       this.startCamera();
     });
 
-    // Diagnostics toggle & manual recovery
     if (this.dom.toggleDiagBtn) {
       this.dom.toggleDiagBtn.addEventListener('click', () => this.toggleDiagnostics());
     }
@@ -337,76 +372,19 @@ class JarvisGestureStudio {
       this.dom.diagRecoverBtn.addEventListener('click', () => this.recoverPipeline());
     }
 
-    // Reset 3D Stage
-    this.dom.resetSceneBtn.addEventListener('click', () => {
-      this.sceneManager.resetScene();
-      this.interactionController.fsm.forceReset();
-      this.speechManager.playChime('select');
-      this.speechManager.speak('Stage spatial transforms reset.');
-    });
-
-    // Gesture Toggle
-    this.dom.toggleGestureBtn.addEventListener('click', () => {
-      const isEnabled = !this.settings.gestureControlEnabled;
-      this.settings.gestureControlEnabled = isEnabled;
-      this.interactionController.gestureControlEnabled = isEnabled;
-      this.dom.toggleGestureControl.checked = isEnabled;
-      this.dom.toggleGestureBtn.classList.toggle('active', isEnabled);
-      this.dom.gestureBtnText.textContent = `GESTURES: ${isEnabled ? 'ON' : 'OFF'}`;
-    });
-
-    // Mirror Toggle
     this.dom.mirrorToggleBtn.addEventListener('click', () => this.toggleMirror());
-
-    // Fullscreen Toggle
     this.dom.fullscreenBtn.addEventListener('click', () => {
       this.sceneManager.toggleFullscreen(document.documentElement);
     });
 
-    // PiP minimize
     this.dom.pipToggleBtn.addEventListener('click', () => {
       const isMin = this.dom.pipWebcamCard.classList.toggle('minimized');
       this.dom.pipToggleBtn.textContent = isMin ? '+' : '−';
     });
-
-    // Sliders
-    this.dom.smoothingSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      this.settings.smoothing = val;
-      this.gestureDetector.setSmoothing(val);
-      this.dom.smoothingVal.textContent = val.toFixed(2);
-    });
-
-    this.dom.rotationSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      this.settings.rotationSensitivity = val;
-      this.interactionController.setRotationSensitivity(val);
-      this.dom.rotationVal.textContent = `${val.toFixed(1)}x`;
-    });
-
-    // Checkbox Toggles
-    this.dom.toggleGestureControl.addEventListener('change', (e) => {
-      const isEnabled = e.target.checked;
-      this.settings.gestureControlEnabled = isEnabled;
-      this.interactionController.gestureControlEnabled = isEnabled;
-      this.dom.toggleGestureBtn.classList.toggle('active', isEnabled);
-      this.dom.gestureBtnText.textContent = `GESTURES: ${isEnabled ? 'ON' : 'OFF'}`;
-    });
-
-    this.dom.toggleOrbitControls.addEventListener('change', (e) => {
-      this.settings.orbitControlsEnabled = e.target.checked;
-      if (this.sceneManager.controls) {
-        this.sceneManager.controls.enabled = e.target.checked;
-      }
-    });
-
-    this.dom.togglePipWebcam.addEventListener('change', (e) => {
-      this.dom.pipWebcamCard.style.display = e.target.checked ? 'flex' : 'none';
-    });
   }
 
   // =========================================================================
-  // STARTUP EXPERIENCE SEQUENCE
+  // STARTUP EXPERIENCE
   // =========================================================================
 
   dismissStartup(withSpeech = true) {
@@ -417,353 +395,116 @@ class JarvisGestureStudio {
     }, 700);
 
     this.speechManager.playChime('morph');
-
     if (withSpeech) {
-      this.speechManager.speak('Welcome to GestureFlow Science Universe. Your hands control the cosmos.');
+      this.speechManager.speak('Welcome to GestureFlow Reality Engine. Spawn assets or grab objects with natural gestures.');
     }
 
-    // Auto-engage optical sensors
     if (!this.isRunning) {
       this.startCamera();
     }
   }
 
   // =========================================================================
-  // SCIENCE DOMAIN SWITCHING & EDUCATIONAL HUD
+  // TOOL SELECTION & INVENTORY DRAWER
   // =========================================================================
 
-  setScienceModule(moduleId) {
-    // 1. Update Tab Bar UI
-    const tabs = [this.dom.tabMatter, this.dom.tabSolar, this.dom.tabAnatomy, this.dom.tabChemistry, this.dom.tabGeometry, this.dom.tabEarth];
-    tabs.forEach(t => {
-      if (t) t.classList.toggle('active', t.getAttribute('data-module') === moduleId);
+  setActiveTool(tool) {
+    this.sceneManager.activeTool = tool;
+
+    [this.dom.toolManipulate, this.dom.toolWeb, this.dom.toolBlaster].forEach(btn => {
+      if (btn) btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
     });
 
-    // 2. Toggle Contextual Quick Bars
-    if (this.dom.matterChipsGroup) {
-      this.dom.matterChipsGroup.classList.toggle('hidden', moduleId !== 'matter');
-    }
-    if (this.dom.solarControlsGroup) {
-      this.dom.solarControlsGroup.classList.toggle('hidden', moduleId !== 'solar');
-    }
-
-    // 3. Update Scene 3D Environment
-    this.sceneManager.setMode(moduleId);
-
-    // 4. Update Header Subtitle
-    const domainTitles = {
-      matter: 'QUANTUM MATTER MANIPULATION',
-      solar: 'HELIOCENTRIC SOLAR SYSTEM EXPLORER',
-      anatomy: 'BIOMEDICAL ANATOMY & PHYSIOLOGY',
-      chemistry: 'ATOMIC STRUCTURE & DNA DOUBLE HELIX',
-      geometry: 'PLATONIC POLYHEDRA & TOPOLOGY',
-      earth: 'PLANETARY GEOPHYSICS & BIOMES'
-    };
-    if (this.dom.headerActiveDomainLabel) {
-      this.dom.headerActiveDomainLabel.textContent = domainTitles[moduleId] || 'SCIENCE UNIVERSE';
-    }
-
-    // 5. Update Educational HUD Card for initial domain state
-    this._updateEducationalCardForModule(moduleId);
-
-    // 6. Audio Feedback & Speech Guidance
     this.speechManager.playChime('select');
-    const spokenIntros = {
-      matter: 'Matter Manipulation Studio. Pinch to grab, rotate your hand, or open palm to trigger a particle shockwave.',
-      solar: 'Solar System Explorer. Point to select any planet, or pinch to inspect.',
-      anatomy: 'Human Anatomy Lab. Inspect the beating heart, respiratory lungs, and neural cortex.',
-      chemistry: 'Atoms and Molecules. Examine quantized electron shells, bond geometries, and DNA.',
-      geometry: 'Geometry Lab. Rotate regular Platonic polyhedra and verify Euler\'s formula.',
-      earth: 'Planetary Earth Explorer. Rotate the globe and explore geographic hotspots.'
-    };
-    if (spokenIntros[moduleId]) {
-      this.speechManager.speak(spokenIntros[moduleId]);
+
+    if (tool === REALITY_TOOLS.MANIPULATE) {
+      this.speechManager.speak('Manipulation mode. Pinch to grab, rotate, and scale.');
+    } else if (tool === REALITY_TOOLS.WEB_SHOOTER) {
+      this.speechManager.speak('Superhero Web Tether active. Pinch to shoot web strand and pull objects.');
+    } else if (tool === REALITY_TOOLS.ENERGY_BLASTER) {
+      this.speechManager.speak('Energy Blaster active. Pinch or open palm to launch plasma bolts.');
     }
   }
 
-  setMatterShape(shapeKey) {
-    if (!this.sceneManager.matterEngine) return;
-    this.sceneManager.matterEngine.morphTo(shapeKey);
-    this.speechManager.playChime('morph');
+  toggleInventory(forceState = null) {
+    this.isInventoryOpen = forceState !== null ? forceState : !this.isInventoryOpen;
+    if (this.dom.inventoryDrawer) {
+      this.dom.inventoryDrawer.classList.toggle('collapsed', !this.isInventoryOpen);
+    }
+    if (this.dom.toggleInventoryBtn) {
+      this.dom.toggleInventoryBtn.classList.toggle('active', this.isInventoryOpen);
+    }
+  }
 
-    // Update active chip UI
-    const chips = [this.dom.chipCloud, this.dom.chipSphere, this.dom.chipCube, this.dom.chipTorus, this.dom.chipGalaxy, this.dom.chipSolarSys];
-    chips.forEach(c => {
-      if (c) c.classList.toggle('active', c.getAttribute('data-shape') === shapeKey);
+  _renderInventoryGrid() {
+    if (!this.dom.inventoryItemsGrid) return;
+    this.dom.inventoryItemsGrid.innerHTML = '';
+
+    const filtered = INVENTORY_ITEMS.filter(item => {
+      const matchesCat = (this.activeCategory === 'all') || (item.category === this.activeCategory);
+      const matchesQuery = !this.searchQuery || item.name.toLowerCase().includes(this.searchQuery) || item.desc.toLowerCase().includes(this.searchQuery);
+      return matchesCat && matchesQuery;
     });
 
-    // Update fact card
-    const shapeInfo = EDUCATIONAL_CONTENT.matter.shapes[shapeKey];
-    if (shapeInfo) {
-      this.dom.hudObjectVal.textContent = shapeInfo.name;
-      this.dom.hudObjectDesc.textContent = shapeInfo.desc;
-      this.dom.hudCategoryLabel.textContent = 'QUANTUM MORPHOLOGY';
-
-      this._renderMetrics(shapeInfo.stats);
-    }
-
-    // Check challenge: Morph into Spiral Galaxy
-    if (shapeKey === MATTER_SHAPES.GALAXY) {
-      this._unlockAchievement('matter_morph_galaxy');
-    }
-  }
-
-  setSolarSpeed(speed, activeBtn) {
-    if (this.sceneManager.scienceModules && this.sceneManager.scienceModules.moduleStates.solar) {
-      const s = this.sceneManager.scienceModules.moduleStates.solar;
-      s.speedMultiplier = speed;
-      s.paused = (speed === 0);
-    }
-    [this.dom.speed1x, this.dom.speed2x, this.dom.speed5x, this.dom.speedPause].forEach(b => {
-      if (b) b.classList.remove('active');
-    });
-    if (activeBtn) activeBtn.classList.add('active');
-    this.speechManager.playChime('select');
-  }
-
-  _updateEducationalCardForModule(moduleId) {
-    const data = EDUCATIONAL_CONTENT[moduleId];
-    if (!data) return;
-
-    this.dom.hudCategoryLabel.textContent = data.subtitle;
-    this.dom.hudObjectVal.textContent = data.title;
-    this.dom.hudObjectDesc.textContent = data.intro;
-
-    // Challenge Box
-    if (data.challenge) {
-      this.dom.challengeTitle.textContent = data.challenge.title;
-      this.dom.challengeDesc.textContent = data.challenge.description;
-      const isDone = this.unlockedAchievements.has(data.challenge.id);
-      this.dom.challengeStatus.textContent = isDone ? 'COMPLETED' : 'INCOMPLETE';
-      this.dom.challengeStatus.className = isDone ? 'challenge-status completed' : 'challenge-status';
-    }
-
-    // Scale tag visibility
-    if (this.dom.educationalScaleTag) {
-      this.dom.educationalScaleTag.style.display = (moduleId === 'solar' || moduleId === 'chemistry') ? 'block' : 'none';
-    }
-
-    // Default facts
-    if (data.facts) {
-      const metricObj = {};
-      data.facts.forEach(f => { metricObj[f.label] = f.value; });
-      this._renderMetrics(metricObj);
-    } else {
-      this._renderMetrics({ 'STATUS': 'Select an object in 3D to inspect detailed scientific telemetry' });
-    }
-  }
-
-  _onObjectInspected(obj) {
-    if (!obj || !obj.name) return;
-    const name = obj.name;
-    const moduleId = this.sceneManager.activeModuleId;
-    const data = EDUCATIONAL_CONTENT[moduleId];
-    if (!data) return;
-
-    let foundInfo = null;
-
-    if (moduleId === 'solar' && data.planets && data.planets[name]) {
-      foundInfo = data.planets[name];
-      this.dom.hudCategoryLabel.textContent = foundInfo.type || 'CELESTIAL BODY';
-      this.dom.hudObjectVal.textContent = foundInfo.name;
-      this.dom.hudObjectDesc.textContent = foundInfo.funFact || '';
-      this._renderMetrics({
-        'DIAMETER': foundInfo.diameter,
-        'ORBIT DISTANCE': foundInfo.distance,
-        'ORBITAL PERIOD': foundInfo.period,
-        'TEMPERATURE': foundInfo.temp
-      });
-
-      // Challenge check: inspect Saturn
-      if (name === 'Saturn') {
-        this._unlockAchievement('solar_inspect_saturn');
-      }
-
-    } else if (moduleId === 'anatomy' && data.organs && data.organs[name]) {
-      foundInfo = data.organs[name];
-      this.dom.hudCategoryLabel.textContent = foundInfo.system || 'ORGAN';
-      this.dom.hudObjectVal.textContent = foundInfo.name;
-      this.dom.hudObjectDesc.textContent = `${foundInfo.function} ${foundInfo.funFact}`;
-      this._renderMetrics({
-        'RATE / SPEED': foundInfo.rate || foundInfo.power || 'Dynamic',
-        'PHYSIOLOGY': foundInfo.volume || foundInfo.neurons || foundInfo.surfaceArea || 'Vital'
-      });
-
-      // Challenge check: inspect Heart
-      if (name === 'Human Heart') {
-        this._unlockAchievement('anatomy_inspect_heart');
-      }
-
-    } else if (moduleId === 'chemistry') {
-      const chemData = data.models[name] || data.models['Water Molecule'];
-      if (chemData) {
-        this.dom.hudCategoryLabel.textContent = chemData.geometry || 'MOLECULAR STRUCTURE';
-        this.dom.hudObjectVal.textContent = chemData.name;
-        this.dom.hudObjectDesc.textContent = chemData.funFact || chemData.elements || '';
-        this._renderMetrics({
-          'BOND ANGLE': chemData.bondAngle || chemData.pitch || 'Quantized',
-          'BOND TYPE': chemData.bondType || chemData.basePairs || 'Covalent'
-        });
-      }
-
-      // Challenge check: select oxygen atom
-      if (name === 'Oxygen Atom' || (obj.parent && obj.parent.name === 'Water Molecule')) {
-        this._unlockAchievement('chemistry_select_oxygen');
-      }
-
-    } else if (moduleId === 'geometry' && data.solids && data.solids[name]) {
-      foundInfo = data.solids[name];
-      this.dom.hudCategoryLabel.textContent = foundInfo.symmetry || 'PLATONIC SOLID';
-      this.dom.hudObjectVal.textContent = foundInfo.name;
-      this.dom.hudObjectDesc.textContent = `${foundInfo.euler} — ${foundInfo.funFact}`;
-      this._renderMetrics({
-        'FACES (F)': `${foundInfo.faces}`,
-        'VERTICES (V)': `${foundInfo.vertices}`,
-        'EDGES (E)': `${foundInfo.edges}`,
-        'EULER (V-E+F)': '2'
-      });
-
-      // Challenge check: Icosahedron
-      if (name === 'Icosahedron') {
-        this._unlockAchievement('geometry_inspect_icosahedron');
-      }
-
-    } else if (moduleId === 'earth' && data.hotspots && data.hotspots[name]) {
-      foundInfo = data.hotspots[name];
-      this.dom.hudCategoryLabel.textContent = foundInfo.region || 'GEOGRAPHIC HOTSPOT';
-      this.dom.hudObjectVal.textContent = foundInfo.name;
-      this.dom.hudObjectDesc.textContent = foundInfo.funFact;
-      this._renderMetrics({
-        'COORDINATES': foundInfo.coords,
-        'METRIC': foundInfo.depth || foundInfo.elevation || foundInfo.area || foundInfo.length
-      });
-
-      // Challenge check: Mariana Trench
-      if (name === 'Mariana Trench') {
-        this._unlockAchievement('earth_locate_mariana');
-      }
-    }
-  }
-
-  _renderMetrics(statsObj) {
-    if (!this.dom.educationalMetricsGrid) return;
-    this.dom.educationalMetricsGrid.innerHTML = '';
-    if (!statsObj) return;
-
-    Object.entries(statsObj).forEach(([k, v]) => {
-      const item = document.createElement('div');
-      item.className = 'edu-metric-item';
-      item.innerHTML = `
-        <span class="metric-key">${k.toUpperCase()}</span>
-        <span class="metric-val text-cyan">${v}</span>
+    filtered.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'inventory-item-card';
+      card.innerHTML = `
+        <div class="item-card-top">
+          <div class="item-icon-box">${item.icon}</div>
+          <div class="item-name">${item.name}</div>
+        </div>
+        <div class="item-desc">${item.desc}</div>
+        <div class="item-spawn-btn">SPAWN IN 3D</div>
       `;
-      this.dom.educationalMetricsGrid.appendChild(item);
+
+      card.addEventListener('click', () => {
+        const spawned = this.sceneManager.spawnInventoryItem(item);
+        this.speechManager.playChime('select');
+        this.speechManager.speak(`Spawned ${item.name}`);
+        this._updateInspector(spawned);
+
+        // Auto collapse inventory on small screens if desired
+        if (window.innerWidth < 800) {
+          this.toggleInventory(false);
+        }
+      });
+
+      this.dom.inventoryItemsGrid.appendChild(card);
     });
   }
 
-  _onGestureTriggered(action, target) {
+  _updateInspector(obj) {
+    if (!this.dom.objectInspectorCard) return;
+
+    if (!obj) {
+      this.dom.objectInspectorCard.classList.add('hidden');
+      return;
+    }
+
+    this.dom.objectInspectorCard.classList.remove('hidden');
+    this.dom.inspectorItemName.textContent = obj.name || 'Entity';
+    this.dom.inspectorCoords.textContent = `X: ${obj.position.x.toFixed(2)} | Y: ${obj.position.y.toFixed(2)} | Z: ${obj.position.z.toFixed(2)}`;
+
+    if (this.dom.inspectorPhysicsToggle && obj.userData) {
+      this.dom.inspectorPhysicsToggle.checked = !!obj.userData.hasInertia;
+    }
+  }
+
+  _onGestureAction(action, obj) {
     if (action === 'GRAB') {
       this.speechManager.playChime('grab');
     } else if (action === 'RELEASE') {
       this.speechManager.playChime('release');
     } else if (action === 'BURST') {
       this.speechManager.playChime('burst');
-      this.speechManager.speak('Particle energy shockwave triggered!');
-    } else if (action === 'FREEZE') {
-      this.speechManager.playChime('select');
-      this.speechManager.speak('Matter arrangement frozen.');
-    } else if (action === 'UNFREEZE') {
-      this.speechManager.playChime('release');
-    }
-  }
-
-  // =========================================================================
-  // ACHIEVEMENTS & PROGRESS SYSTEM
-  // =========================================================================
-
-  _loadAchievements() {
-    try {
-      const stored = localStorage.getItem('gestureflow_achievements');
-      if (stored) {
-        this.unlockedAchievements = new Set(JSON.parse(stored));
-      }
-    } catch (e) {
-      this.unlockedAchievements = new Set();
-    }
-  }
-
-  _saveAchievements() {
-    try {
-      localStorage.setItem('gestureflow_achievements', JSON.stringify([...this.unlockedAchievements]));
-    } catch (e) {
-      // Local storage fallback
-    }
-  }
-
-  _unlockAchievement(id) {
-    if (this.unlockedAchievements.has(id)) return;
-    this.unlockedAchievements.add(id);
-    this._saveAchievements();
-    this._updateAchievementsUI();
-
-    const ach = ACHIEVEMENTS.find(a => a.id === id);
-    if (ach) {
-      this.speechManager.playChime('achievement');
-      this.speechManager.speak(`Discovery complete! Unlocked ${ach.title}.`);
-
-      // Update active challenge card status
-      if (this.dom.challengeStatus) {
-        this.dom.challengeStatus.textContent = 'COMPLETED';
-        this.dom.challengeStatus.className = 'challenge-status completed';
+      // If blaster tool is active, launch plasma bolt
+      if (this.sceneManager.activeTool === REALITY_TOOLS.ENERGY_BLASTER) {
+        this.sceneManager.launchProjectileAtCursor();
+      } else if (this.sceneManager.activeTool === REALITY_TOOLS.WEB_SHOOTER) {
+        this.sceneManager.shootWebToSelected();
       }
     }
-  }
-
-  _updateAchievementsUI() {
-    const total = ACHIEVEMENTS.length;
-    const count = this.unlockedAchievements.size;
-    if (this.dom.achievementsBadgeLabel) {
-      this.dom.achievementsBadgeLabel.textContent = `🏆 BADGES ${count}/${total}`;
-    }
-    this._renderAchievementsGrid();
-  }
-
-  _renderAchievementsGrid() {
-    if (!this.dom.achievementsGrid) return;
-    this.dom.achievementsGrid.innerHTML = '';
-
-    ACHIEVEMENTS.forEach(a => {
-      const isUnlocked = this.unlockedAchievements.has(a.id);
-      const card = document.createElement('div');
-      card.className = `achievement-card ${isUnlocked ? 'unlocked' : ''}`;
-      card.innerHTML = `
-        <div class="achieve-icon-box">${isUnlocked ? a.icon : '🔒'}</div>
-        <div class="achieve-details">
-          <div class="achieve-title">${a.title}</div>
-          <div class="achieve-desc">${isUnlocked ? a.desc : 'Complete exploration challenge to unlock'}</div>
-        </div>
-      `;
-      this.dom.achievementsGrid.appendChild(card);
-    });
-  }
-
-  openAchievementsModal() {
-    if (!this.dom.achievementsModal) return;
-    this._renderAchievementsGrid();
-    this.dom.achievementsModal.classList.remove('hidden');
-    this.speechManager.playChime('select');
-  }
-
-  closeAchievementsModal() {
-    if (!this.dom.achievementsModal) return;
-    this.dom.achievementsModal.classList.add('hidden');
-  }
-
-  resetAchievements() {
-    this.unlockedAchievements.clear();
-    this._saveAchievements();
-    this._updateAchievementsUI();
-    this.speechManager.speak('Exhibition progress reset.');
   }
 
   // =========================================================================
@@ -818,20 +559,16 @@ class JarvisGestureStudio {
     this._updateStatusBeacon(TRACKING_STATES.INITIALIZING);
 
     try {
-      // 1. Initialize MediaPipe HandLandmarker
       await this.detector.initialize(({ message }) => {
         this.dom.loadingMessage.textContent = message.toUpperCase();
       });
 
-      // 2. Start webcam stream
       this.dom.loadingMessage.textContent = 'CONNECTING OPTICAL SENSOR...';
       await this.camera.start();
 
-      // 3. Resize canvas overlay
       const rect = this.dom.cameraStage.getBoundingClientRect();
       this.renderer.resize(rect.width, rect.height);
 
-      // 4. Activate running state & start hardware frame scheduler
       this._hideOverlay(this.dom.loadingOverlay);
       this.isRunning = true;
       this.telemetry.reset();
@@ -857,15 +594,11 @@ class JarvisGestureStudio {
     this.renderer.clear();
     this.telemetry.reset();
 
-    // Release held objects safely
     this.interactionController.fsm.forceReset();
-
-    // Hide virtual cursors
     this.dom.screenVirtualCursor.classList.add('hidden');
     this.sceneManager.updateCursor(null);
     this.sceneManager.setHoveredObject(null);
 
-    // Reset UI indicators
     this._updateStatusBeacon(TRACKING_STATES.STOPPED);
     this._updateButtonToStartMode();
     this._hideOverlay(this.dom.loadingOverlay);
@@ -874,21 +607,19 @@ class JarvisGestureStudio {
     this.dom.pipStatusDot.classList.remove('active');
     this.dom.cardHandsCount.textContent = '0 HANDS';
     this.dom.cardLatency.textContent = '-- ms';
-    this.dom.hudStatePill.textContent = 'STANDBY';
     this.dom.hudGestureVal.textContent = 'STANDBY';
   }
 
   async recoverPipeline() {
     if (this.isRecovering) return;
     this.isRecovering = true;
-    console.warn('Initiating controlled optical pipeline recovery...');
+    console.warn('Initiating optical pipeline recovery...');
     this._showOverlay(this.dom.loadingOverlay);
     this.dom.loadingMessage.textContent = 'RECOVERING OPTICAL PIPELINE...';
 
     try {
       this.videoScheduler.stop();
       this.camera.stop();
-
       this.detector.resetCounters();
       this.gestureDetector.needsFilterReset = true;
       this.interactionController.fsm.forceReset();
@@ -903,7 +634,6 @@ class JarvisGestureStudio {
       this.isRunning = true;
       this._hideOverlay(this.dom.loadingOverlay);
       this._updateStatusBeacon(TRACKING_STATES.TRACKING);
-      console.log('Optical pipeline recovery completed successfully.');
     } catch (err) {
       console.error('Optical pipeline recovery failed:', err);
       this.stopCamera();
@@ -1039,22 +769,17 @@ class JarvisGestureStudio {
       this.dom.perfDegradedTag.style.color = '#00f59b';
     }
 
-    // Interaction state & Target object
+    // Gesture badge
     if (this.latestInteractionStatus) {
-      const { interactionState, selectedObjectName, detectedGesture } = this.latestInteractionStatus;
-      this.dom.hudStatePill.textContent = interactionState;
-
-      // Coordinates readout
-      const activeObj = this.interactionController.heldObject || this.sceneManager.hoveredObject || this.sceneManager.selectedObject;
-      if (activeObj) {
-        this.dom.hudTargetX.textContent = activeObj.position.x.toFixed(2);
-        this.dom.hudTargetY.textContent = activeObj.position.y.toFixed(2);
-        this.dom.hudTargetZ.textContent = activeObj.position.z.toFixed(2);
-      }
-
-      // Gesture badge
+      const { detectedGesture } = this.latestInteractionStatus;
       this.dom.hudGestureVal.textContent = detectedGesture;
       this.dom.hudGestureIcon.textContent = this._getGestureIcon(detectedGesture);
+
+      // Realtime coords update for inspector if object is selected
+      if (this.sceneManager.selectedObject) {
+        const p = this.sceneManager.selectedObject.position;
+        this.dom.inspectorCoords.textContent = `X: ${p.x.toFixed(2)} | Y: ${p.y.toFixed(2)} | Z: ${p.z.toFixed(2)}`;
+      }
     }
 
     // Live Diagnostics Panel Updates
@@ -1065,7 +790,6 @@ class JarvisGestureStudio {
         this.dom.diagStreamAdvancing.className = snap.isStreamAdvancing ? 'diag-val font-mono text-emerald' : 'diag-val font-mono text-danger';
       }
       if (this.dom.diagFrameAge) this.dom.diagFrameAge.textContent = `${snap.cameraFrameAgeMs} ms`;
-      if (this.dom.diagTimeSinceInf) this.dom.diagTimeSinceInf.textContent = `${snap.timeSinceLastInferenceMs} ms`;
       if (this.dom.diagInfDuration) this.dom.diagInfDuration.textContent = `${snap.inferenceTimeMs} ms`;
       if (this.dom.diagInferring) {
         this.dom.diagInferring.textContent = snap.isInferring ? 'ACTIVE' : 'IDLE';
@@ -1075,7 +799,6 @@ class JarvisGestureStudio {
         this.dom.diagConsecErrors.textContent = `${snap.consecutiveErrors}`;
         this.dom.diagConsecErrors.style.color = snap.consecutiveErrors > 0 ? '#ef4444' : '';
       }
-      if (this.dom.diagSkippedFrames) this.dom.diagSkippedFrames.textContent = `${snap.skippedFrames}`;
       if (this.dom.diagCondition) this.dom.diagCondition.textContent = snap.trackingCondition;
       if (this.dom.diagRenderFps) this.dom.diagRenderFps.textContent = `${snap.renderFps} FPS`;
       if (this.dom.diagDelegate) {
@@ -1087,7 +810,6 @@ class JarvisGestureStudio {
     if (this.isRunning && !this.isRecovering && snap.consecutiveErrors > 15) {
       if (this.recoveryAttempts < 2) {
         this.recoveryAttempts++;
-        console.warn(`Watchdog detected ${snap.consecutiveErrors} consecutive errors. Triggering automatic recovery (attempt ${this.recoveryAttempts}/2)...`);
         this.recoverPipeline();
       }
     } else if (snap.consecutiveErrors === 0 && this.recoveryAttempts > 0) {
@@ -1140,7 +862,7 @@ class JarvisGestureStudio {
   }
 }
 
-// Bootstrap JARVIS studio on DOM load
+// Bootstrap Reality Engine studio on DOM load
 window.addEventListener('DOMContentLoaded', () => {
-  window.jarvisStudio = new JarvisGestureStudio();
+  window.realityStudio = new JarvisRealityStudio();
 });
