@@ -1,22 +1,20 @@
 /**
- * GestureFlow — Reality Engine 3D Sandbox
- * Master Application Coordinator & Performance Decoupler
+ * GestureFlow — Cinematic JARVIS Workstation Master Coordinator
  * Separates ML inference from 60+ FPS Three.js rendering via VideoFrameScheduler,
- * batches DOM updates, provides real-time diagnostic telemetry, voice guidance,
- * procedural 3D asset spawning, superhero web tethering, and energy projectiles.
+ * orchestrates the central holographic core gyroscope, 3D entity inventory,
+ * full-screen HUD telemetry, and responsive hand gesture interactions.
  */
-
 import * as THREE from 'three';
 import { CameraManager } from './modules/camera.js';
 import { HandDetector } from './modules/handDetector.js';
 import { LandmarkRenderer } from './modules/landmarkRenderer.js';
 import { TelemetryManager } from './modules/telemetry.js';
-import { SceneManager, REALITY_TOOLS } from './modules/sceneManager.js';
+import { SceneManager, INTERACTION_MODES } from './modules/sceneManager.js';
 import { GestureDetector } from './modules/gestureDetector.js';
 import { InteractionController } from './modules/interactionController.js';
 import { VideoFrameScheduler } from './modules/videoScheduler.js';
 import { SpeechManager } from './modules/speechManager.js';
-import { INVENTORY_ITEMS, INVENTORY_CATEGORIES } from './modules/inventoryData.js';
+import { INVENTORY_ASSETS } from './modules/inventoryManager.js';
 import { INTERACTION_STATES } from './modules/gestureStateMachine.js';
 import {
   TRACKING_STATES,
@@ -24,18 +22,19 @@ import {
   DEFAULT_SETTINGS
 } from './modules/constants.js';
 
-class JarvisRealityStudio {
+class JarvisGestureStudio {
   constructor() {
     // DOM Element Cache
     this.dom = {
-      // Startup Experience Overlay
-      startupOverlay: document.getElementById('startupOverlay'),
-      startExperienceBtn: document.getElementById('startExperienceBtn'),
-      skipIntroBtn: document.getElementById('skipIntroBtn'),
-
-      // Header & Tactical Core
+      // Header & Mode Controls
       globalBeacon: document.getElementById('globalBeacon'),
-      headerActiveDomainLabel: document.getElementById('headerActiveDomainLabel'),
+      btnModeGimbal: document.getElementById('btnModeGimbal'),
+      btnModeObject: document.getElementById('btnModeObject'),
+      toggleVoiceBtn: document.getElementById('toggleVoiceBtn'),
+      voiceBtnText: document.getElementById('voiceBtnText'),
+      toggleGestureBtn: document.getElementById('toggleGestureBtn'),
+      gestureBtnText: document.getElementById('gestureBtnText'),
+      resetSceneBtn: document.getElementById('resetSceneBtn'),
       mirrorToggleBtn: document.getElementById('mirrorToggleBtn'),
       mirrorBtnLabel: document.getElementById('mirrorBtnLabel'),
       fullscreenBtn: document.getElementById('fullscreenBtn'),
@@ -44,72 +43,16 @@ class JarvisRealityStudio {
       toggleCameraBtn: document.getElementById('toggleCameraBtn'),
       cameraBtnText: document.getElementById('cameraBtnText'),
 
-      // Reality Tools Matrix
-      toolManipulate: document.getElementById('toolManipulate'),
-      toolWeb: document.getElementById('toolWeb'),
-      toolBlaster: document.getElementById('toolBlaster'),
-
-      // Global Sandbox Controls
-      toggleInventoryBtn: document.getElementById('toggleInventoryBtn'),
-      inventoryBtnLabel: document.getElementById('inventoryBtnLabel'),
-      undoBtn: document.getElementById('undoBtn'),
-      clearSceneBtn: document.getElementById('clearSceneBtn'),
-      resetSceneBtn: document.getElementById('resetSceneBtn'),
-
-      // First-Use Tutorial Banner
-      tutorialBanner: document.getElementById('tutorialBanner'),
-      dismissTutorialBtn: document.getElementById('dismissTutorialBtn'),
-
-      // Floating Inventory Drawer
-      inventoryDrawer: document.getElementById('inventoryDrawer'),
-      closeInventoryBtn: document.getElementById('closeInventoryBtn'),
-      inventorySearchInput: document.getElementById('inventorySearchInput'),
+      // Left Rail (Inventory)
+      leftRail: document.getElementById('leftRail'),
+      toggleLeftRailBtn: document.getElementById('toggleLeftRailBtn'),
       inventoryCatTabs: document.getElementById('inventoryCatTabs'),
       inventoryItemsGrid: document.getElementById('inventoryItemsGrid'),
+      clearEntitiesBtn: document.getElementById('clearEntitiesBtn'),
+      spawnCubeQuickBtn: document.getElementById('spawnCubeQuickBtn'),
 
-      // Selected Object Inspector
-      objectInspectorCard: document.getElementById('objectInspectorCard'),
-      inspectorItemName: document.getElementById('inspectorItemName'),
-      inspectorCoords: document.getElementById('inspectorCoords'),
-      inspectorPhysicsToggle: document.getElementById('inspectorPhysicsToggle'),
-      inspectorDuplicateBtn: document.getElementById('inspectorDuplicateBtn'),
-      inspectorWebBtn: document.getElementById('inspectorWebBtn'),
-      inspectorDeleteBtn: document.getElementById('inspectorDeleteBtn'),
-
-      // Live Subtitles Bar
-      subtitlesBar: document.getElementById('subtitlesBar'),
-      subtitlesText: document.getElementById('subtitlesText'),
-
-      // Telemetry Top Right
-      perfDegradedTag: document.getElementById('perfDegradedTag'),
-      cardRenderFps: document.getElementById('cardRenderFps'),
-      cardLatency: document.getElementById('cardLatency'),
-      cardHandsCount: document.getElementById('cardHandsCount'),
-      hudGestureBadge: document.querySelector('.hud-gesture-badge-compact'),
-      hudGestureIcon: document.getElementById('hudGestureIcon'),
-      hudGestureVal: document.getElementById('hudGestureVal'),
-
-      // Diagnostics Panel HUD
-      diagnosticsPanel: document.getElementById('diagnosticsPanel'),
-      closeDiagBtn: document.getElementById('closeDiagBtn'),
-      diagRecoverBtn: document.getElementById('diagRecoverBtn'),
-      diagSchedulerType: document.getElementById('diagSchedulerType'),
-      diagStreamAdvancing: document.getElementById('diagStreamAdvancing'),
-      diagFrameAge: document.getElementById('diagFrameAge'),
-      diagInfDuration: document.getElementById('diagInfDuration'),
-      diagInferring: document.getElementById('diagInferring'),
-      diagConsecErrors: document.getElementById('diagConsecErrors'),
-      diagCondition: document.getElementById('diagCondition'),
-      diagRenderFps: document.getElementById('diagRenderFps'),
-      diagDelegate: document.getElementById('diagDelegate'),
-
-      // 3D Viewport & HUD Elements
-      threeCard: document.getElementById('threeCard'),
-      threeContainer: document.getElementById('threeCanvasContainer'),
-      screenVirtualCursor: document.getElementById('screenVirtualCursor'),
-      cursorLabel: document.getElementById('cursorLabel'),
-
-      // Holographic PiP Card
+      // Right Rail (Telemetry & Inspector)
+      rightRail: document.getElementById('rightRail'),
       pipWebcamCard: document.getElementById('pipWebcamCard'),
       pipToggleBtn: document.getElementById('pipToggleBtn'),
       pipStatusDot: document.getElementById('pipStatusDot'),
@@ -125,14 +68,62 @@ class JarvisRealityStudio {
       errorRetryBtn: document.getElementById('errorRetryBtn'),
       pipInferenceRate: document.getElementById('pipInferenceRate'),
 
-      // Tactical Tuning Dock (if present)
-      smoothingSlider: document.getElementById('smoothingSlider'),
-      smoothingVal: document.getElementById('smoothingVal'),
-      rotationSlider: document.getElementById('rotationSlider'),
-      rotationVal: document.getElementById('rotationVal'),
-      toggleGestureControl: document.getElementById('toggleGestureControl'),
-      toggleOrbitControls: document.getElementById('toggleOrbitControls'),
-      togglePipWebcam: document.getElementById('togglePipWebcam')
+      // Gesture Status Badge
+      hudStatePill: document.getElementById('hudStatePill'),
+      hudGestureBadge: document.getElementById('hudGestureBadge'),
+      hudGestureIcon: document.getElementById('hudGestureIcon'),
+      hudGestureVal: document.getElementById('hudGestureVal'),
+      gestureHintText: document.getElementById('gestureHintText'),
+
+      // Entity Inspector
+      entityInspectorCard: document.getElementById('entityInspectorCard'),
+      inspectorCategoryTag: document.getElementById('inspectorCategoryTag'),
+      hudObjectVal: document.getElementById('hudObjectVal'),
+      hudTargetX: document.getElementById('hudTargetX'),
+      hudTargetY: document.getElementById('hudTargetY'),
+      hudTargetZ: document.getElementById('hudTargetZ'),
+      hudTargetRot: document.getElementById('hudTargetRot'),
+      hudTargetScale: document.getElementById('hudTargetScale'),
+      actionCloneBtn: document.getElementById('actionCloneBtn'),
+      actionFreezeBtn: document.getElementById('actionFreezeBtn'),
+      actionDeleteBtn: document.getElementById('actionDeleteBtn'),
+
+      // Telemetry Top Right
+      perfDegradedTag: document.getElementById('perfDegradedTag'),
+      cardRenderFps: document.getElementById('cardRenderFps'),
+      cardLatency: document.getElementById('cardLatency'),
+      cardHandsCount: document.getElementById('cardHandsCount'),
+
+      // Subtitles Bar
+      subtitlesBar: document.getElementById('subtitlesBar'),
+      subtitlesText: document.getElementById('subtitlesText'),
+
+      // Bottom Dock
+      dockEntityCount: document.getElementById('dockEntityCount'),
+      dockSpawnTray: document.getElementById('dockSpawnTray'),
+      quickCoreFocusBtn: document.getElementById('quickCoreFocusBtn'),
+      dockResetBtn: document.getElementById('dockResetBtn'),
+
+      // Viewport & Cursor Reticle
+      threeContainer: document.getElementById('threeCanvasContainer'),
+      screenVirtualCursor: document.getElementById('screenVirtualCursor'),
+      cursorLabel: document.getElementById('cursorLabel'),
+
+      // Diagnostics Panel
+      diagnosticsPanel: document.getElementById('diagnosticsPanel'),
+      closeDiagBtn: document.getElementById('closeDiagBtn'),
+      diagRecoverBtn: document.getElementById('diagRecoverBtn'),
+      diagSchedulerType: document.getElementById('diagSchedulerType'),
+      diagStreamAdvancing: document.getElementById('diagStreamAdvancing'),
+      diagFrameAge: document.getElementById('diagFrameAge'),
+      diagTimeSinceInf: document.getElementById('diagTimeSinceInf'),
+      diagInfDuration: document.getElementById('diagInfDuration'),
+      diagInferring: document.getElementById('diagInferring'),
+      diagConsecErrors: document.getElementById('diagConsecErrors'),
+      diagSkippedFrames: document.getElementById('diagSkippedFrames'),
+      diagCondition: document.getElementById('diagCondition'),
+      diagRenderFps: document.getElementById('diagRenderFps'),
+      diagDelegate: document.getElementById('diagDelegate')
     };
 
     // Specialized Engine Modules
@@ -157,11 +148,6 @@ class JarvisRealityStudio {
       gestureDetector: this.gestureDetector
     });
 
-    // Active UI states
-    this.activeCategory = 'all';
-    this.searchQuery = '';
-    this.isInventoryOpen = true;
-
     // Lifecycle & Timing State
     this.isRunning = false;
     this.isRecovering = false;
@@ -170,6 +156,9 @@ class JarvisRealityStudio {
     this.animationFrameId = null;
     this.lastRenderTime = performance.now();
     this.settings = { ...DEFAULT_SETTINGS };
+
+    // Active Category Filter for Left Rail
+    this.activeCategory = 'all';
 
     // Decoupled Frame State
     this.latestGestureFrame = null;
@@ -185,17 +174,21 @@ class JarvisRealityStudio {
     this._setupResizeHandlers();
     this._syncSettings();
 
+    // Populate Left Rail & Bottom Dock Inventory Items
+    this._renderInventory();
+    this._updateEntityCount();
+
     // Connect Interaction Controller listeners
     this.interactionController.onTargetSelected = (obj) => {
       this._updateInspector(obj);
     };
 
     this.interactionController.onGestureTriggered = (action, obj) => {
-      this._onGestureAction(action, obj);
+      this._onGestureTriggered(action, obj);
     };
 
-    // Render Initial Inventory Catalog
-    this._renderInventoryGrid();
+    // Set Initial Mode: Core Gimbal Mode
+    this.setInteractionMode(INTERACTION_MODES.CORE_GIMBAL);
 
     // Start 60+ FPS Three.js rendering loop immediately
     this._startRenderLoop();
@@ -206,162 +199,54 @@ class JarvisRealityStudio {
   // =========================================================================
 
   _bindEvents() {
-    // 1. Startup Experience
-    if (this.dom.startExperienceBtn) {
-      this.dom.startExperienceBtn.addEventListener('click', () => this.dismissStartup(true));
+    // 1. Mode Switcher
+    if (this.dom.btnModeGimbal) {
+      this.dom.btnModeGimbal.addEventListener('click', () => {
+        this.setInteractionMode(INTERACTION_MODES.CORE_GIMBAL);
+      });
     }
-    if (this.dom.skipIntroBtn) {
-      this.dom.skipIntroBtn.addEventListener('click', () => this.dismissStartup(false));
-    }
-
-    // 2. Tutorial Banner Dismiss
-    if (this.dom.dismissTutorialBtn) {
-      this.dom.dismissTutorialBtn.addEventListener('click', () => {
-        if (this.dom.tutorialBanner) this.dom.tutorialBanner.classList.add('hidden');
+    if (this.dom.btnModeObject) {
+      this.dom.btnModeObject.addEventListener('click', () => {
+        this.setInteractionMode(INTERACTION_MODES.OBJECT_MANIPULATE);
       });
     }
 
-    // 3. Tool Matrix Buttons
-    const tools = [
-      { el: this.dom.toolManipulate, tool: REALITY_TOOLS.MANIPULATE },
-      { el: this.dom.toolWeb, tool: REALITY_TOOLS.WEB_SHOOTER },
-      { el: this.dom.toolBlaster, tool: REALITY_TOOLS.ENERGY_BLASTER }
-    ];
-
-    tools.forEach(({ el, tool }) => {
-      if (el) {
-        el.addEventListener('click', () => this.setActiveTool(tool));
-      }
-    });
-
-    // 4. Inventory Drawer Toggle
-    if (this.dom.toggleInventoryBtn) {
-      this.dom.toggleInventoryBtn.addEventListener('click', () => this.toggleInventory());
-    }
-    if (this.dom.closeInventoryBtn) {
-      this.dom.closeInventoryBtn.addEventListener('click', () => this.toggleInventory(false));
-    }
-
-    // 5. Inventory Search & Category Tabs
-    if (this.dom.inventorySearchInput) {
-      this.dom.inventorySearchInput.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value.toLowerCase().trim();
-        this._renderInventoryGrid();
-      });
-    }
-
-    if (this.dom.inventoryCatTabs) {
-      this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          this.activeCategory = tab.getAttribute('data-cat');
-          this._renderInventoryGrid();
-        });
-      });
-    }
-
-    // 6. Sandbox Action Buttons
-    if (this.dom.undoBtn) {
-      this.dom.undoBtn.addEventListener('click', () => {
-        this.sceneManager.undo();
-        this.speechManager.playChime('release');
-        this.speechManager.speak('Action undone.');
-      });
-    }
-
-    if (this.dom.clearSceneBtn) {
-      this.dom.clearSceneBtn.addEventListener('click', () => {
-        this.sceneManager.clearScene();
-        this.speechManager.playChime('select');
-        this.speechManager.speak('Scene cleared.');
-        this._updateInspector(null);
-      });
-    }
-
-    if (this.dom.resetSceneBtn) {
-      this.dom.resetSceneBtn.addEventListener('click', () => {
-        this.sceneManager.resetScene();
-        this.interactionController.fsm.forceReset();
-        this.speechManager.playChime('select');
-        this.speechManager.speak('Stage reset to default.');
-        this._updateInspector(this.sceneManager.selectedObject);
-      });
-    }
-
-    // 7. Inspector Actions
-    if (this.dom.inspectorDuplicateBtn) {
-      this.dom.inspectorDuplicateBtn.addEventListener('click', () => {
-        const clone = this.sceneManager.duplicateSelected();
-        if (clone) {
-          this.speechManager.playChime('select');
-          this.speechManager.speak(`Cloned ${clone.name}`);
-          this._updateInspector(clone);
+    // 2. Voice Guidance Toggle
+    if (this.dom.toggleVoiceBtn) {
+      this.dom.toggleVoiceBtn.addEventListener('click', () => {
+        const isVoiceOn = this.speechManager.toggleVoice();
+        this.dom.toggleVoiceBtn.classList.toggle('active', isVoiceOn);
+        this.dom.voiceBtnText.textContent = `VOICE: ${isVoiceOn ? 'ON' : 'OFF'}`;
+        if (isVoiceOn) {
+          this.speechManager.speak('Voice guidance enabled.');
         }
       });
     }
 
-    if (this.dom.inspectorWebBtn) {
-      this.dom.inspectorWebBtn.addEventListener('click', () => {
-        const strand = this.sceneManager.shootWebToSelected();
-        if (strand) {
-          this.speechManager.playChime('morph');
-          this.speechManager.speak('Web strand attached.');
-        }
-      });
-    }
-
-    if (this.dom.inspectorDeleteBtn) {
-      this.dom.inspectorDeleteBtn.addEventListener('click', () => {
-        this.sceneManager.deleteSelected();
-        this.speechManager.playChime('release');
-        this._updateInspector(null);
-      });
-    }
-
-    if (this.dom.inspectorPhysicsToggle) {
-      this.dom.inspectorPhysicsToggle.addEventListener('change', (e) => {
-        if (this.sceneManager.selectedObject) {
-          this.sceneManager.selectedObject.userData.hasInertia = e.target.checked;
-        }
-      });
-    }
-
-    // 8. Keyboard Shortcuts Fallback
-    window.addEventListener('keydown', (e) => {
-      // Ctrl+Z = Undo
-      if (e.ctrlKey && e.key.toLowerCase() === 'z') {
-        this.sceneManager.undo();
-        this.speechManager.playChime('release');
-      }
-      // 'I' = Toggle Inventory
-      if (e.key.toLowerCase() === 'i' && !e.target.matches('input')) {
-        this.toggleInventory();
-      }
-      // 'W' = Shoot Web
-      if (e.key.toLowerCase() === 'w' && !e.target.matches('input')) {
-        this.sceneManager.shootWebToSelected();
-      }
-      // 'F' or 'Space' = Launch Blaster
-      if ((e.key.toLowerCase() === 'f' || e.code === 'Space') && !e.target.matches('input')) {
-        this.sceneManager.launchProjectileAtCursor();
-      }
-      // Delete = Delete selected
-      if (e.key === 'Delete' && !e.target.matches('input')) {
-        this.sceneManager.deleteSelected();
-        this._updateInspector(null);
-      }
+    // 3. Gesture Control Toggle
+    this.dom.toggleGestureBtn.addEventListener('click', () => {
+      const isEnabled = !this.settings.gestureControlEnabled;
+      this.settings.gestureControlEnabled = isEnabled;
+      this.interactionController.gestureControlEnabled = isEnabled;
+      this.dom.toggleGestureBtn.classList.toggle('active', isEnabled);
+      this.dom.gestureBtnText.textContent = `GESTURES: ${isEnabled ? 'ON' : 'OFF'}`;
     });
 
-    // 9. Camera Controls & Overlays
-    this.dom.toggleCameraBtn.addEventListener('click', () => this.toggleCamera());
-    this.dom.splashStartBtn.addEventListener('click', () => this.toggleCamera());
+    // 4. Reset Stage
+    this.dom.resetSceneBtn.addEventListener('click', () => this.resetStage());
+    if (this.dom.dockResetBtn) {
+      this.dom.dockResetBtn.addEventListener('click', () => this.resetStage());
+    }
 
-    this.dom.errorRetryBtn.addEventListener('click', () => {
-      this._hideOverlay(this.dom.errorOverlay);
-      this.startCamera();
+    // 5. Mirror Toggle
+    this.dom.mirrorToggleBtn.addEventListener('click', () => this.toggleMirror());
+
+    // 6. Fullscreen Toggle
+    this.dom.fullscreenBtn.addEventListener('click', () => {
+      this.sceneManager.toggleFullscreen(document.documentElement);
     });
 
+    // 7. Diagnostics HUD Toggle
     if (this.dom.toggleDiagBtn) {
       this.dom.toggleDiagBtn.addEventListener('click', () => this.toggleDiagnostics());
     }
@@ -372,143 +257,261 @@ class JarvisRealityStudio {
       this.dom.diagRecoverBtn.addEventListener('click', () => this.recoverPipeline());
     }
 
-    this.dom.mirrorToggleBtn.addEventListener('click', () => this.toggleMirror());
-    this.dom.fullscreenBtn.addEventListener('click', () => {
-      this.sceneManager.toggleFullscreen(document.documentElement);
+    // 8. Camera start/stop
+    this.dom.toggleCameraBtn.addEventListener('click', () => this.toggleCamera());
+    this.dom.splashStartBtn.addEventListener('click', () => this.toggleCamera());
+
+    this.dom.errorRetryBtn.addEventListener('click', () => {
+      this._hideOverlay(this.dom.errorOverlay);
+      this.startCamera();
     });
 
+    // 9. PiP minimize
     this.dom.pipToggleBtn.addEventListener('click', () => {
       const isMin = this.dom.pipWebcamCard.classList.toggle('minimized');
       this.dom.pipToggleBtn.textContent = isMin ? '+' : '−';
     });
-  }
 
-  // =========================================================================
-  // STARTUP EXPERIENCE
-  // =========================================================================
-
-  dismissStartup(withSpeech = true) {
-    if (!this.dom.startupOverlay) return;
-    this.dom.startupOverlay.classList.add('fading');
-    setTimeout(() => {
-      this.dom.startupOverlay.style.display = 'none';
-    }, 700);
-
-    this.speechManager.playChime('morph');
-    if (withSpeech) {
-      this.speechManager.speak('Welcome to GestureFlow Reality Engine. Spawn assets or grab objects with natural gestures.');
+    // 10. Left Rail Collapse
+    if (this.dom.toggleLeftRailBtn) {
+      this.dom.toggleLeftRailBtn.addEventListener('click', () => {
+        const isCollapsed = this.dom.leftRail.classList.toggle('collapsed');
+        this.dom.toggleLeftRailBtn.textContent = isCollapsed ? '▶' : '◀';
+      });
     }
 
-    if (!this.isRunning) {
-      this.startCamera();
+    // 11. Category Filter Tabs
+    if (this.dom.inventoryCatTabs) {
+      this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.activeCategory = btn.getAttribute('data-cat') || 'all';
+          this._renderInventory();
+        });
+      });
     }
-  }
 
-  // =========================================================================
-  // TOOL SELECTION & INVENTORY DRAWER
-  // =========================================================================
-
-  setActiveTool(tool) {
-    this.sceneManager.activeTool = tool;
-
-    [this.dom.toolManipulate, this.dom.toolWeb, this.dom.toolBlaster].forEach(btn => {
-      if (btn) btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
-    });
-
-    this.speechManager.playChime('select');
-
-    if (tool === REALITY_TOOLS.MANIPULATE) {
-      this.speechManager.speak('Manipulation mode. Pinch to grab, rotate, and scale.');
-    } else if (tool === REALITY_TOOLS.WEB_SHOOTER) {
-      this.speechManager.speak('Superhero Web Tether active. Pinch to shoot web strand and pull objects.');
-    } else if (tool === REALITY_TOOLS.ENERGY_BLASTER) {
-      this.speechManager.speak('Energy Blaster active. Pinch or open palm to launch plasma bolts.');
+    // 12. Quick Action Buttons on Left Rail & Inspector
+    if (this.dom.clearEntitiesBtn) {
+      this.dom.clearEntitiesBtn.addEventListener('click', () => {
+        this.sceneManager.inventory.clearAll();
+        this._updateEntityCount();
+        this.speechManager.playChime('release');
+        this.speechManager.speak('All spawned entities cleared.');
+      });
     }
-  }
 
-  toggleInventory(forceState = null) {
-    this.isInventoryOpen = forceState !== null ? forceState : !this.isInventoryOpen;
-    if (this.dom.inventoryDrawer) {
-      this.dom.inventoryDrawer.classList.toggle('collapsed', !this.isInventoryOpen);
+    if (this.dom.spawnCubeQuickBtn) {
+      this.dom.spawnCubeQuickBtn.addEventListener('click', () => {
+        this.spawnAsset('cube');
+      });
     }
-    if (this.dom.toggleInventoryBtn) {
-      this.dom.toggleInventoryBtn.classList.toggle('active', this.isInventoryOpen);
-    }
-  }
 
-  _renderInventoryGrid() {
-    if (!this.dom.inventoryItemsGrid) return;
-    this.dom.inventoryItemsGrid.innerHTML = '';
-
-    const filtered = INVENTORY_ITEMS.filter(item => {
-      const matchesCat = (this.activeCategory === 'all') || (item.category === this.activeCategory);
-      const matchesQuery = !this.searchQuery || item.name.toLowerCase().includes(this.searchQuery) || item.desc.toLowerCase().includes(this.searchQuery);
-      return matchesCat && matchesQuery;
-    });
-
-    filtered.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'inventory-item-card';
-      card.innerHTML = `
-        <div class="item-card-top">
-          <div class="item-icon-box">${item.icon}</div>
-          <div class="item-name">${item.name}</div>
-        </div>
-        <div class="item-desc">${item.desc}</div>
-        <div class="item-spawn-btn">SPAWN IN 3D</div>
-      `;
-
-      card.addEventListener('click', () => {
-        const spawned = this.sceneManager.spawnInventoryItem(item);
-        this.speechManager.playChime('select');
-        this.speechManager.speak(`Spawned ${item.name}`);
-        this._updateInspector(spawned);
-
-        // Auto collapse inventory on small screens if desired
-        if (window.innerWidth < 800) {
-          this.toggleInventory(false);
+    if (this.dom.actionCloneBtn) {
+      this.dom.actionCloneBtn.addEventListener('click', () => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.userData.isSpawnedEntity) {
+          const cloned = this.sceneManager.inventory.duplicateEntity(this.sceneManager.selectedObject);
+          if (cloned) {
+            this._updateEntityCount();
+            this.speechManager.playChime('select');
+            this.speechManager.speak('Entity duplicated.');
+          }
         }
       });
-
-      this.dom.inventoryItemsGrid.appendChild(card);
-    });
-  }
-
-  _updateInspector(obj) {
-    if (!this.dom.objectInspectorCard) return;
-
-    if (!obj) {
-      this.dom.objectInspectorCard.classList.add('hidden');
-      return;
     }
 
-    this.dom.objectInspectorCard.classList.remove('hidden');
-    this.dom.inspectorItemName.textContent = obj.name || 'Entity';
-    this.dom.inspectorCoords.textContent = `X: ${obj.position.x.toFixed(2)} | Y: ${obj.position.y.toFixed(2)} | Z: ${obj.position.z.toFixed(2)}`;
+    if (this.dom.actionFreezeBtn) {
+      this.dom.actionFreezeBtn.addEventListener('click', () => {
+        if (this.sceneManager.jarvisCore) {
+          const next = !this.sceneManager.jarvisCore.isFrozen;
+          this.sceneManager.jarvisCore.setFrozen(next);
+          this.speechManager.playChime('select');
+          this.speechManager.speak(next ? 'Mechanism frozen.' : 'Mechanism active.');
+        }
+      });
+    }
 
-    if (this.dom.inspectorPhysicsToggle && obj.userData) {
-      this.dom.inspectorPhysicsToggle.checked = !!obj.userData.hasInertia;
+    if (this.dom.actionDeleteBtn) {
+      this.dom.actionDeleteBtn.addEventListener('click', () => {
+        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.userData.isSpawnedEntity) {
+          this.sceneManager.inventory.deleteEntity(this.sceneManager.selectedObject);
+          this._updateEntityCount();
+          this.speechManager.playChime('release');
+          this.speechManager.speak('Entity deleted.');
+        }
+      });
+    }
+
+    if (this.dom.quickCoreFocusBtn) {
+      this.dom.quickCoreFocusBtn.addEventListener('click', () => {
+        this.setInteractionMode(INTERACTION_MODES.CORE_GIMBAL);
+        this.sceneManager.controls.target.set(0, 0.25, 0);
+        this.sceneManager.camera.position.set(0, 1.4, 6.2);
+        this.sceneManager.controls.update();
+        this.speechManager.playChime('select');
+      });
     }
   }
 
-  _onGestureAction(action, obj) {
+  // =========================================================================
+  // INTERACTION MODES & WORKSPACE CONTROLS
+  // =========================================================================
+
+  setInteractionMode(mode) {
+    this.sceneManager.setInteractionMode(mode);
+
+    if (this.dom.btnModeGimbal) {
+      this.dom.btnModeGimbal.classList.toggle('active', mode === INTERACTION_MODES.CORE_GIMBAL);
+    }
+    if (this.dom.btnModeObject) {
+      this.dom.btnModeObject.classList.toggle('active', mode === INTERACTION_MODES.OBJECT_MANIPULATE);
+    }
+
+    if (mode === INTERACTION_MODES.CORE_GIMBAL) {
+      this._updateInspector(this.sceneManager.jarvisCore.root);
+      this.speechManager.speak('Core Gimbal Mode active. Pinch to rotate central mechanism.');
+    } else {
+      const target = this.sceneManager.inventory.spawnedEntities[0] || this.sceneManager.jarvisCore.root;
+      this._updateInspector(target);
+      this.speechManager.speak('Entity Manipulate Mode active. Point and pinch to manipulate 3D objects.');
+    }
+
+    this.speechManager.playChime('select');
+  }
+
+  resetStage() {
+    this.sceneManager.resetScene();
+    this.interactionController.fsm.forceReset();
+    this._updateInspector(this.sceneManager.jarvisCore.root);
+    this.speechManager.playChime('select');
+    this.speechManager.speak('Stage spatial transforms reset.');
+  }
+
+  // =========================================================================
+  // INVENTORY RENDERING & SPAWNING
+  // =========================================================================
+
+  _renderInventory() {
+    // 1. Left Rail Vertical Items
+    if (this.dom.inventoryItemsGrid) {
+      this.dom.inventoryItemsGrid.innerHTML = '';
+      const filtered = INVENTORY_ASSETS.filter(a => this.activeCategory === 'all' || a.cat === this.activeCategory);
+
+      filtered.forEach(asset => {
+        const card = document.createElement('div');
+        card.className = 'inventory-item-card';
+        card.title = `Spawn ${asset.name}`;
+        card.innerHTML = `
+          <div class="item-icon-box">${asset.icon}</div>
+          <div class="item-info-col">
+            <span class="item-name">${asset.name}</span>
+            <span class="item-desc">${asset.desc}</span>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          this.spawnAsset(asset.id);
+        });
+        this.dom.inventoryItemsGrid.appendChild(card);
+      });
+    }
+
+    // 2. Bottom Dock Horizontal Spawn Tray
+    if (this.dom.dockSpawnTray) {
+      this.dom.dockSpawnTray.innerHTML = '';
+      INVENTORY_ASSETS.forEach(asset => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'dock-spawn-chip';
+        chip.title = `Spawn ${asset.name}`;
+        chip.innerHTML = `<span>${asset.icon}</span> <span>${asset.name}</span>`;
+        chip.addEventListener('click', () => {
+          this.spawnAsset(asset.id);
+        });
+        this.dom.dockSpawnTray.appendChild(chip);
+      });
+    }
+  }
+
+  spawnAsset(assetId) {
+    const spawned = this.sceneManager.inventory.spawnEntity(assetId);
+    if (spawned) {
+      this._updateEntityCount();
+      this.setInteractionMode(INTERACTION_MODES.OBJECT_MANIPULATE);
+      this._updateInspector(spawned);
+      this.speechManager.playChime('grab');
+      this.speechManager.speak(`Spawned ${spawned.name}.`);
+    }
+  }
+
+  _updateEntityCount() {
+    const count = this.sceneManager.inventory.getEntityCount();
+    if (this.dom.dockEntityCount) {
+      this.dom.dockEntityCount.textContent = `ENTITIES: ${count}`;
+    }
+  }
+
+  // =========================================================================
+  // SELECTED ENTITY TELEMETRY INSPECTOR
+  // =========================================================================
+
+  _updateInspector(targetObj) {
+    if (!targetObj) return;
+
+    const name = targetObj.name || 'Holographic Target';
+    const isCore = targetObj === this.sceneManager.jarvisCore.root;
+
+    if (this.dom.hudObjectVal) this.dom.hudObjectVal.textContent = name;
+    if (this.dom.inspectorCategoryTag) {
+      this.dom.inspectorCategoryTag.textContent = isCore ? 'CENTRAL MECHANISM' : 'SPATIAL ENTITY';
+    }
+
+    // Position coordinates
+    if (this.dom.hudTargetX) this.dom.hudTargetX.textContent = targetObj.position.x.toFixed(2);
+    if (this.dom.hudTargetY) this.dom.hudTargetY.textContent = targetObj.position.y.toFixed(2);
+    if (this.dom.hudTargetZ) this.dom.hudTargetZ.textContent = targetObj.position.z.toFixed(2);
+
+    // Rotation readout (degrees)
+    if (this.dom.hudTargetRot) {
+      const toDeg = 180 / Math.PI;
+      const rx = ((targetObj.rotation.x * toDeg) % 360 + 360) % 360;
+      const ry = ((targetObj.rotation.y * toDeg) % 360 + 360) % 360;
+      const rz = ((targetObj.rotation.z * toDeg) % 360 + 360) % 360;
+      this.dom.hudTargetRot.textContent = `R: ${rx.toFixed(0)}° | P: ${ry.toFixed(0)}° | Y: ${rz.toFixed(0)}°`;
+    }
+
+    // Scale readout
+    if (this.dom.hudTargetScale) {
+      this.dom.hudTargetScale.textContent = `${targetObj.scale.x.toFixed(2)}x`;
+    }
+
+    // Toggle delete button availability (can't delete central core)
+    if (this.dom.actionDeleteBtn) {
+      this.dom.actionDeleteBtn.style.display = isCore ? 'none' : 'inline-block';
+    }
+    if (this.dom.actionCloneBtn) {
+      this.dom.actionCloneBtn.style.display = isCore ? 'none' : 'inline-block';
+    }
+  }
+
+  _onGestureTriggered(action, target) {
     if (action === 'GRAB') {
       this.speechManager.playChime('grab');
     } else if (action === 'RELEASE') {
       this.speechManager.playChime('release');
     } else if (action === 'BURST') {
       this.speechManager.playChime('burst');
-      // If blaster tool is active, launch plasma bolt
-      if (this.sceneManager.activeTool === REALITY_TOOLS.ENERGY_BLASTER) {
-        this.sceneManager.launchProjectileAtCursor();
-      } else if (this.sceneManager.activeTool === REALITY_TOOLS.WEB_SHOOTER) {
-        this.sceneManager.shootWebToSelected();
-      }
+      this.speechManager.speak('Radial energy pulse triggered!');
+    } else if (action === 'FREEZE') {
+      this.speechManager.playChime('select');
+      this.speechManager.speak('Core manipulation frozen.');
+    } else if (action === 'UNFREEZE') {
+      this.speechManager.playChime('release');
     }
   }
 
   // =========================================================================
-  // CORE CAMERA & TRACKING PIPELINE
+  // CAMERA & MEDIAPIPE TRACKING PIPELINE
   // =========================================================================
 
   _setupResizeHandlers() {
@@ -521,9 +524,6 @@ class JarvisRealityStudio {
     };
 
     window.addEventListener('resize', onResize);
-    const observer = new ResizeObserver(onResize);
-    observer.observe(this.dom.threeCard);
-    observer.observe(this.dom.cameraStage);
     onResize();
   }
 
@@ -563,7 +563,7 @@ class JarvisRealityStudio {
         this.dom.loadingMessage.textContent = message.toUpperCase();
       });
 
-      this.dom.loadingMessage.textContent = 'CONNECTING OPTICAL SENSOR...';
+      this.dom.loadingMessage.textContent = 'CONNECTING OPTICAL SCANNER...';
       await this.camera.start();
 
       const rect = this.dom.cameraStage.getBoundingClientRect();
@@ -579,6 +579,7 @@ class JarvisRealityStudio {
       this._updateButtonToStopMode();
 
       this.dom.pipStatusDot.classList.add('active');
+      this.speechManager.speak('Optical scanner connected. Hand tracking active.');
 
     } catch (err) {
       console.error('Camera or model start error:', err);
@@ -607,19 +608,21 @@ class JarvisRealityStudio {
     this.dom.pipStatusDot.classList.remove('active');
     this.dom.cardHandsCount.textContent = '0 HANDS';
     this.dom.cardLatency.textContent = '-- ms';
+    this.dom.hudStatePill.textContent = 'STANDBY';
     this.dom.hudGestureVal.textContent = 'STANDBY';
   }
 
   async recoverPipeline() {
     if (this.isRecovering) return;
     this.isRecovering = true;
-    console.warn('Initiating optical pipeline recovery...');
+    console.warn('Initiating controlled optical pipeline recovery...');
     this._showOverlay(this.dom.loadingOverlay);
     this.dom.loadingMessage.textContent = 'RECOVERING OPTICAL PIPELINE...';
 
     try {
       this.videoScheduler.stop();
       this.camera.stop();
+
       this.detector.resetCounters();
       this.gestureDetector.needsFilterReset = true;
       this.interactionController.fsm.forceReset();
@@ -662,7 +665,7 @@ class JarvisRealityStudio {
       // 1. Tick render telemetry
       this.telemetry.tickRender(timestamp);
 
-      // 2. Continuous 3D mesh interpolation tick (60/120 FPS buttery smooth)
+      // 2. Continuous 3D mesh interpolation tick
       this.interactionController.tickRender(dt);
 
       // 3. Render Three.js 3D Scene
@@ -693,18 +696,13 @@ class JarvisRealityStudio {
   _onVideoFrame(frameTime, metadata) {
     if (!this.isRunning || this.detector.isInferring) return;
 
-    // Execute MediaPipe task with guaranteed monotonic timestamp
     const result = this.detector.detect(this.dom.video, frameTime);
     if (result) {
       const handCount = result.landmarks.length;
 
-      // Record telemetry
       this.telemetry.recordInference(result.inferenceTimeMs, handCount, frameTime);
-
-      // Render tactical HUD skeleton on PiP canvas
       this.renderer.render(result.landmarks, result.handedness);
 
-      // 1€ Filtered Gesture Classification (debounced dropout recovery)
       const gestureFrame = this.gestureDetector.process(
         result.landmarks,
         this.settings.mirrorPreview,
@@ -712,7 +710,6 @@ class JarvisRealityStudio {
       );
       this.latestGestureFrame = gestureFrame;
 
-      // Update 3D spatial interaction targets (decoupled from render loop)
       const interactionStatus = this.interactionController.updateInference(gestureFrame, frameTime);
       this.latestInteractionStatus = interactionStatus;
     }
@@ -729,9 +726,8 @@ class JarvisRealityStudio {
     }
 
     el.classList.remove('hidden');
-    const rect = this.dom.threeCard.getBoundingClientRect();
-    const px = cursorCoords.x * rect.width;
-    const py = cursorCoords.y * rect.height;
+    const px = cursorCoords.x * window.innerWidth;
+    const py = cursorCoords.y * window.innerHeight;
 
     el.style.transform = `translate3d(${px}px, ${py}px, 0)`;
 
@@ -769,16 +765,31 @@ class JarvisRealityStudio {
       this.dom.perfDegradedTag.style.color = '#00f59b';
     }
 
-    // Gesture badge
+    // Interaction state & Target object
     if (this.latestInteractionStatus) {
-      const { detectedGesture } = this.latestInteractionStatus;
+      const { interactionState, detectedGesture } = this.latestInteractionStatus;
+      this.dom.hudStatePill.textContent = interactionState;
+
+      // Update Inspector coordinates for active target
+      const activeObj = this.interactionController.heldObject || this.sceneManager.hoveredObject || this.sceneManager.selectedObject;
+      if (activeObj) {
+        this._updateInspector(activeObj);
+      }
+
+      // Gesture badge
       this.dom.hudGestureVal.textContent = detectedGesture;
       this.dom.hudGestureIcon.textContent = this._getGestureIcon(detectedGesture);
 
-      // Realtime coords update for inspector if object is selected
-      if (this.sceneManager.selectedObject) {
-        const p = this.sceneManager.selectedObject.position;
-        this.dom.inspectorCoords.textContent = `X: ${p.x.toFixed(2)} | Y: ${p.y.toFixed(2)} | Z: ${p.z.toFixed(2)}`;
+      const hints = {
+        [GESTURE_TYPES.PINCH]: 'Grabbing & rotating selected 3D target',
+        [GESTURE_TYPES.POINTING]: 'Hover targeting & cursor tracking',
+        [GESTURE_TYPES.OPEN_PALM]: 'Radial energy shockwave released',
+        [GESTURE_TYPES.FIST]: 'Spatial rotation locked and frozen',
+        [GESTURE_TYPES.TWO_HAND_SCALE]: 'Dynamic proportional distance scaling',
+        [GESTURE_TYPES.NEUTRAL]: 'Observing spatial workspace'
+      };
+      if (this.dom.gestureHintText) {
+        this.dom.gestureHintText.textContent = hints[detectedGesture] || 'Ready for hand input';
       }
     }
 
@@ -790,6 +801,7 @@ class JarvisRealityStudio {
         this.dom.diagStreamAdvancing.className = snap.isStreamAdvancing ? 'diag-val font-mono text-emerald' : 'diag-val font-mono text-danger';
       }
       if (this.dom.diagFrameAge) this.dom.diagFrameAge.textContent = `${snap.cameraFrameAgeMs} ms`;
+      if (this.dom.diagTimeSinceInf) this.dom.diagTimeSinceInf.textContent = `${snap.timeSinceLastInferenceMs} ms`;
       if (this.dom.diagInfDuration) this.dom.diagInfDuration.textContent = `${snap.inferenceTimeMs} ms`;
       if (this.dom.diagInferring) {
         this.dom.diagInferring.textContent = snap.isInferring ? 'ACTIVE' : 'IDLE';
@@ -799,6 +811,7 @@ class JarvisRealityStudio {
         this.dom.diagConsecErrors.textContent = `${snap.consecutiveErrors}`;
         this.dom.diagConsecErrors.style.color = snap.consecutiveErrors > 0 ? '#ef4444' : '';
       }
+      if (this.dom.diagSkippedFrames) this.dom.diagSkippedFrames.textContent = `${snap.skippedFrames}`;
       if (this.dom.diagCondition) this.dom.diagCondition.textContent = snap.trackingCondition;
       if (this.dom.diagRenderFps) this.dom.diagRenderFps.textContent = `${snap.renderFps} FPS`;
       if (this.dom.diagDelegate) {
@@ -810,6 +823,7 @@ class JarvisRealityStudio {
     if (this.isRunning && !this.isRecovering && snap.consecutiveErrors > 15) {
       if (this.recoveryAttempts < 2) {
         this.recoveryAttempts++;
+        console.warn(`Watchdog detected ${snap.consecutiveErrors} consecutive errors. Triggering automatic recovery (attempt ${this.recoveryAttempts}/2)...`);
         this.recoverPipeline();
       }
     } else if (snap.consecutiveErrors === 0 && this.recoveryAttempts > 0) {
@@ -862,7 +876,7 @@ class JarvisRealityStudio {
   }
 }
 
-// Bootstrap Reality Engine studio on DOM load
+// Bootstrap JARVIS studio on DOM load
 window.addEventListener('DOMContentLoaded', () => {
-  window.realityStudio = new JarvisRealityStudio();
+  window.jarvisStudio = new JarvisGestureStudio();
 });

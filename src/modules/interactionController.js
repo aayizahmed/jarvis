@@ -104,39 +104,41 @@ export class InteractionController {
     // 2. Identify Hovered / Targeted Object when not currently holding
     let candidateHover = null;
     if (!this.heldObject) {
-      // Step 2a: Direct mesh geometry intersection with parent root unwinding
-      const intersects = this.raycaster.intersectObjects(this.sm.interactiveObjects, true);
-      if (intersects.length > 0) {
-        let hit = intersects[0].object;
-        while (hit && !this.sm.interactiveObjects.includes(hit) && hit.parent) {
-          hit = hit.parent;
-        }
-        if (this.sm.interactiveObjects.includes(hit)) {
-          candidateHover = hit;
-        }
-      }
-
-      // Step 2b: Proximity cone / ray distance test (if ray doesn't hit exact mesh faces)
-      // Allows natural pointing at the Quantum Cube or Torus without pixel-perfect precision
-      if (!candidateHover) {
-        let minRayDist = Infinity;
-        let bestCandidate = null;
-        const PROXIMITY_THRESHOLD = 1.75; // Spatial targeting tolerance in 3D world units
-
-        for (const obj of this.sm.interactiveObjects) {
-          this.rayToObjVec.subVectors(obj.position, this.sm.camera.position);
-          // Check that target object is in front of the camera ray
-          if (this.raycaster.ray.direction.dot(this.rayToObjVec) > 0) {
-            const rayDist = this.raycaster.ray.distanceToPoint(obj.position);
-            if (rayDist < PROXIMITY_THRESHOLD && rayDist < minRayDist) {
-              minRayDist = rayDist;
-              bestCandidate = obj;
-            }
+      if (this.sm.interactionMode === 'CORE_GIMBAL' && this.sm.jarvisCore) {
+        candidateHover = this.sm.jarvisCore.root;
+      } else {
+        // Step 2a: Direct mesh geometry intersection with parent root unwinding
+        const intersects = this.raycaster.intersectObjects(this.sm.interactiveObjects, true);
+        if (intersects.length > 0) {
+          let hit = intersects[0].object;
+          while (hit && !this.sm.interactiveObjects.includes(hit) && hit.parent) {
+            hit = hit.parent;
+          }
+          if (this.sm.interactiveObjects.includes(hit)) {
+            candidateHover = hit;
           }
         }
 
-        if (bestCandidate) {
-          candidateHover = bestCandidate;
+        // Step 2b: Proximity cone / ray distance test
+        if (!candidateHover) {
+          let minRayDist = Infinity;
+          let bestCandidate = null;
+          const PROXIMITY_THRESHOLD = 2.2; // Spatial targeting tolerance in 3D world units
+
+          for (const obj of this.sm.interactiveObjects) {
+            this.rayToObjVec.subVectors(obj.position, this.sm.camera.position);
+            if (this.raycaster.ray.direction.dot(this.rayToObjVec) > 0) {
+              const rayDist = this.raycaster.ray.distanceToPoint(obj.position);
+              if (rayDist < PROXIMITY_THRESHOLD && rayDist < minRayDist) {
+                minRayDist = rayDist;
+                bestCandidate = obj;
+              }
+            }
+          }
+
+          if (bestCandidate) {
+            candidateHover = bestCandidate;
+          }
         }
       }
 
@@ -155,18 +157,18 @@ export class InteractionController {
 
     // 2d: Contextual Scientific Gesture Actions
     if (gesture === 'OPEN_PALM' && this.previousGesture !== 'OPEN_PALM') {
-      if (this.sm.activeModuleId === 'matter' && this.sm.matterEngine) {
-        this.sm.matterEngine.triggerBurst();
+      if (this.sm.jarvisCore) {
+        this.sm.jarvisCore.triggerEnergyPulse();
       }
       if (this.onGestureTriggered) this.onGestureTriggered('BURST');
     } else if (gesture === 'FIST' && this.previousGesture !== 'FIST') {
-      if (this.sm.activeModuleId === 'matter' && this.sm.matterEngine) {
-        this.sm.matterEngine.setFrozen(true);
+      if (this.sm.jarvisCore) {
+        this.sm.jarvisCore.setFrozen(true);
       }
       if (this.onGestureTriggered) this.onGestureTriggered('FREEZE');
     } else if (this.previousGesture === 'FIST' && gesture !== 'FIST') {
-      if (this.sm.activeModuleId === 'matter' && this.sm.matterEngine) {
-        this.sm.matterEngine.setFrozen(false);
+      if (this.sm.jarvisCore) {
+        this.sm.jarvisCore.setFrozen(false);
       }
       if (this.onGestureTriggered) this.onGestureTriggered('UNFREEZE');
     }
@@ -254,12 +256,6 @@ export class InteractionController {
   }
 
   _onGrabStart(target) {
-    if (this.sm.activeTool === 'WEB_SHOOTER') {
-      this.sm.shootWebToSelected();
-    } else if (this.sm.activeTool === 'ENERGY_BLASTER') {
-      this.sm.launchProjectileAtCursor();
-    }
-
     this.heldObject = target;
     this.targetPos.copy(target.position);
     this.targetScale.copy(target.scale);
@@ -290,11 +286,6 @@ export class InteractionController {
 
   _onGrabRelease(target) {
     if (this.heldObject) {
-      // Calculate and transfer gentle release inertia to object physics
-      if (this.heldObject.userData && this.heldObject.userData.velocity) {
-        const releaseVel = new THREE.Vector3().subVectors(this.targetPos, this.heldObject.position).multiplyScalar(3.2);
-        this.heldObject.userData.velocity.copy(releaseVel);
-      }
       this.sm.setSelectedObject(this.heldObject, false);
       this.heldObject = null;
     }
