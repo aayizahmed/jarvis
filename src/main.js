@@ -1,20 +1,20 @@
 /**
- * GestureFlow — Cinematic JARVIS Workstation Master Coordinator
- * Separates ML inference from 60+ FPS Three.js rendering via VideoFrameScheduler,
- * orchestrates the central holographic core gyroscope, 3D entity inventory,
- * full-screen HUD telemetry, and responsive hand gesture interactions.
+ * GestureFlow — Cinematic JARVIS Edition
+ * Master Application Coordinator & Performance Decoupler
+ * Ultra-smooth 60+ FPS Three.js rendering via VideoFrameScheduler,
+ * 1€ adaptive filtering, quaternion delta rotation, and seamless
+ * cinematic intro screen transition to the Sphere, Ring, and Torus workspace.
  */
-import * as THREE from 'three';
+
 import { CameraManager } from './modules/camera.js';
 import { HandDetector } from './modules/handDetector.js';
 import { LandmarkRenderer } from './modules/landmarkRenderer.js';
 import { TelemetryManager } from './modules/telemetry.js';
-import { SceneManager, INTERACTION_MODES } from './modules/sceneManager.js';
+import { SceneManager } from './modules/sceneManager.js';
 import { GestureDetector } from './modules/gestureDetector.js';
 import { InteractionController } from './modules/interactionController.js';
 import { VideoFrameScheduler } from './modules/videoScheduler.js';
 import { SpeechManager } from './modules/speechManager.js';
-import { INVENTORY_ASSETS } from './modules/inventoryManager.js';
 import { INTERACTION_STATES } from './modules/gestureStateMachine.js';
 import {
   TRACKING_STATES,
@@ -26,12 +26,17 @@ class JarvisGestureStudio {
   constructor() {
     // DOM Element Cache
     this.dom = {
-      // Header & Mode Controls
+      // Cinematic Intro Screen Overlay
+      cinematicIntroScreen: document.getElementById('cinematicIntroScreen'),
+      enterExperienceBtn: document.getElementById('enterExperienceBtn'),
+      introBeaconDot: document.getElementById('introBeaconDot'),
+      introBeaconLabel: document.getElementById('introBeaconLabel'),
+      introSensorDot: document.getElementById('introSensorDot'),
+      introSensorText: document.getElementById('introSensorText'),
+      returnToIntroBtn: document.getElementById('returnToIntroBtn'),
+
+      // Header & Tactical Core
       globalBeacon: document.getElementById('globalBeacon'),
-      btnModeGimbal: document.getElementById('btnModeGimbal'),
-      btnModeObject: document.getElementById('btnModeObject'),
-      toggleVoiceBtn: document.getElementById('toggleVoiceBtn'),
-      voiceBtnText: document.getElementById('voiceBtnText'),
       toggleGestureBtn: document.getElementById('toggleGestureBtn'),
       gestureBtnText: document.getElementById('gestureBtnText'),
       resetSceneBtn: document.getElementById('resetSceneBtn'),
@@ -43,16 +48,47 @@ class JarvisGestureStudio {
       toggleCameraBtn: document.getElementById('toggleCameraBtn'),
       cameraBtnText: document.getElementById('cameraBtnText'),
 
-      // Left Rail (Inventory)
-      leftRail: document.getElementById('leftRail'),
-      toggleLeftRailBtn: document.getElementById('toggleLeftRailBtn'),
-      inventoryCatTabs: document.getElementById('inventoryCatTabs'),
-      inventoryItemsGrid: document.getElementById('inventoryItemsGrid'),
-      clearEntitiesBtn: document.getElementById('clearEntitiesBtn'),
-      spawnCubeQuickBtn: document.getElementById('spawnCubeQuickBtn'),
+      // Diagnostics Panel HUD
+      diagnosticsPanel: document.getElementById('diagnosticsPanel'),
+      closeDiagBtn: document.getElementById('closeDiagBtn'),
+      diagRecoverBtn: document.getElementById('diagRecoverBtn'),
+      diagSchedulerType: document.getElementById('diagSchedulerType'),
+      diagStreamAdvancing: document.getElementById('diagStreamAdvancing'),
+      diagFrameAge: document.getElementById('diagFrameAge'),
+      diagInfDuration: document.getElementById('diagInfDuration'),
+      diagInferring: document.getElementById('diagInferring'),
+      diagConsecErrors: document.getElementById('diagConsecErrors'),
+      diagCondition: document.getElementById('diagCondition'),
+      diagRenderFps: document.getElementById('diagRenderFps'),
+      diagDelegate: document.getElementById('diagDelegate'),
 
-      // Right Rail (Telemetry & Inspector)
-      rightRail: document.getElementById('rightRail'),
+      // Target Chips: Ring, Sphere, Torus
+      chipRing: document.getElementById('chipRing'),
+      chipSphere: document.getElementById('chipSphere'),
+      chipTorus: document.getElementById('chipTorus'),
+
+      // 3D Viewport & In-Viewport Tactical HUD
+      threeCard: document.getElementById('threeCard'),
+      threeContainer: document.getElementById('threeCanvasContainer'),
+      screenVirtualCursor: document.getElementById('screenVirtualCursor'),
+      cursorLabel: document.getElementById('cursorLabel'),
+
+      hudStatePill: document.getElementById('hudStatePill'),
+      hudObjectVal: document.getElementById('hudObjectVal'),
+      hudTargetX: document.getElementById('hudTargetX'),
+      hudTargetY: document.getElementById('hudTargetY'),
+      hudTargetZ: document.getElementById('hudTargetZ'),
+      hudGestureBadge: document.getElementById('hudGestureBadge'),
+      hudGestureIcon: document.getElementById('hudGestureIcon'),
+      hudGestureVal: document.getElementById('hudGestureVal'),
+
+      // Telemetry Top Right
+      perfDegradedTag: document.getElementById('perfDegradedTag'),
+      cardRenderFps: document.getElementById('cardRenderFps'),
+      cardLatency: document.getElementById('cardLatency'),
+      cardHandsCount: document.getElementById('cardHandsCount'),
+
+      // Holographic PiP Card
       pipWebcamCard: document.getElementById('pipWebcamCard'),
       pipToggleBtn: document.getElementById('pipToggleBtn'),
       pipStatusDot: document.getElementById('pipStatusDot'),
@@ -67,66 +103,20 @@ class JarvisGestureStudio {
       errorMessage: document.getElementById('errorMessage'),
       errorRetryBtn: document.getElementById('errorRetryBtn'),
       pipInferenceRate: document.getElementById('pipInferenceRate'),
+      pipFilterType: document.getElementById('pipFilterType'),
 
-      // Gesture Status Badge
-      hudStatePill: document.getElementById('hudStatePill'),
-      hudGestureBadge: document.getElementById('hudGestureBadge'),
-      hudGestureIcon: document.getElementById('hudGestureIcon'),
-      hudGestureVal: document.getElementById('hudGestureVal'),
-      gestureHintText: document.getElementById('gestureHintText'),
-
-      // Entity Inspector
-      entityInspectorCard: document.getElementById('entityInspectorCard'),
-      inspectorCategoryTag: document.getElementById('inspectorCategoryTag'),
-      hudObjectVal: document.getElementById('hudObjectVal'),
-      hudTargetX: document.getElementById('hudTargetX'),
-      hudTargetY: document.getElementById('hudTargetY'),
-      hudTargetZ: document.getElementById('hudTargetZ'),
-      hudTargetRot: document.getElementById('hudTargetRot'),
-      hudTargetScale: document.getElementById('hudTargetScale'),
-      actionCloneBtn: document.getElementById('actionCloneBtn'),
-      actionFreezeBtn: document.getElementById('actionFreezeBtn'),
-      actionDeleteBtn: document.getElementById('actionDeleteBtn'),
-
-      // Telemetry Top Right
-      perfDegradedTag: document.getElementById('perfDegradedTag'),
-      cardRenderFps: document.getElementById('cardRenderFps'),
-      cardLatency: document.getElementById('cardLatency'),
-      cardHandsCount: document.getElementById('cardHandsCount'),
-
-      // Subtitles Bar
-      subtitlesBar: document.getElementById('subtitlesBar'),
-      subtitlesText: document.getElementById('subtitlesText'),
-
-      // Bottom Dock
-      dockEntityCount: document.getElementById('dockEntityCount'),
-      dockSpawnTray: document.getElementById('dockSpawnTray'),
-      quickCoreFocusBtn: document.getElementById('quickCoreFocusBtn'),
-      dockResetBtn: document.getElementById('dockResetBtn'),
-
-      // Viewport & Cursor Reticle
-      threeContainer: document.getElementById('threeCanvasContainer'),
-      screenVirtualCursor: document.getElementById('screenVirtualCursor'),
-      cursorLabel: document.getElementById('cursorLabel'),
-
-      // Diagnostics Panel
-      diagnosticsPanel: document.getElementById('diagnosticsPanel'),
-      closeDiagBtn: document.getElementById('closeDiagBtn'),
-      diagRecoverBtn: document.getElementById('diagRecoverBtn'),
-      diagSchedulerType: document.getElementById('diagSchedulerType'),
-      diagStreamAdvancing: document.getElementById('diagStreamAdvancing'),
-      diagFrameAge: document.getElementById('diagFrameAge'),
-      diagTimeSinceInf: document.getElementById('diagTimeSinceInf'),
-      diagInfDuration: document.getElementById('diagInfDuration'),
-      diagInferring: document.getElementById('diagInferring'),
-      diagConsecErrors: document.getElementById('diagConsecErrors'),
-      diagSkippedFrames: document.getElementById('diagSkippedFrames'),
-      diagCondition: document.getElementById('diagCondition'),
-      diagRenderFps: document.getElementById('diagRenderFps'),
-      diagDelegate: document.getElementById('diagDelegate')
+      // Tactical Tuning Dock
+      tuningDock: document.getElementById('tuningDock'),
+      smoothingSlider: document.getElementById('smoothingSlider'),
+      smoothingVal: document.getElementById('smoothingVal'),
+      rotationSlider: document.getElementById('rotationSlider'),
+      rotationVal: document.getElementById('rotationVal'),
+      toggleGestureControl: document.getElementById('toggleGestureControl'),
+      toggleOrbitControls: document.getElementById('toggleOrbitControls'),
+      togglePipWebcam: document.getElementById('togglePipWebcam')
     };
 
-    // Specialized Engine Modules
+    // Core Engine Subsystems
     this.camera = new CameraManager(this.dom.video);
     this.detector = new HandDetector();
     this.renderer = new LandmarkRenderer(this.dom.canvas);
@@ -134,61 +124,50 @@ class JarvisGestureStudio {
     this.sceneManager = new SceneManager(this.dom.threeContainer);
     this.gestureDetector = new GestureDetector();
     this.interactionController = new InteractionController(this.sceneManager);
-    this.speechManager = new SpeechManager(this.dom.subtitlesText);
+    this.speechManager = new SpeechManager();
 
-    // Robust Video Frame Processing Scheduler (Decoupled from Three.js RAF)
-    this.videoScheduler = new VideoFrameScheduler(this.dom.video, (frameTime, metadata) => {
-      this._onVideoFrame(frameTime, metadata);
+    // Hardware Frame Scheduler
+    this.scheduler = new VideoFrameScheduler({
+      onFrame: (video, time, meta) => this._onVideoFrame(video, time, meta),
+      onTimeout: () => this._onSchedulerTimeout()
     });
 
-    // Connect Telemetry Diagnostics Engine
-    this.telemetry.setDiagnosticSources({
-      scheduler: this.videoScheduler,
-      detector: this.detector,
-      gestureDetector: this.gestureDetector
-    });
-
-    // Lifecycle & Timing State
+    // Lifecycle State
     this.isRunning = false;
     this.isRecovering = false;
-    this.recoveryAttempts = 0;
     this.showDiagnostics = false;
+    this.recoveryAttempts = 0;
     this.animationFrameId = null;
     this.lastRenderTime = performance.now();
     this.settings = { ...DEFAULT_SETTINGS };
-
-    // Active Category Filter for Left Rail
-    this.activeCategory = 'all';
 
     // Decoupled Frame State
     this.latestGestureFrame = null;
     this.latestInteractionStatus = null;
     this.lastDomUpdateTime = 0;
-    this.domUpdateIntervalMs = 80; // Throttled 12 Hz DOM telemetry updates
+    this.domUpdateIntervalMs = 80; // 12 Hz throttled DOM updater
+    this.isTransitioning = false;
 
     this._init();
   }
 
   _init() {
+    // Initial State: Intro mode active
+    document.body.classList.add('in-intro-mode');
+
     this._bindEvents();
     this._setupResizeHandlers();
     this._syncSettings();
 
-    // Populate Left Rail & Bottom Dock Inventory Items
-    this._renderInventory();
-    this._updateEntityCount();
-
-    // Connect Interaction Controller listeners
+    // Interaction controller callbacks
     this.interactionController.onTargetSelected = (obj) => {
-      this._updateInspector(obj);
+      this._updateTargetChips(obj);
     };
 
     this.interactionController.onGestureTriggered = (action, obj) => {
-      this._onGestureTriggered(action, obj);
+      if (action === 'GRAB') this.speechManager.playChime('grab');
+      if (action === 'RELEASE') this.speechManager.playChime('release');
     };
-
-    // Set Initial Mode: Core Gimbal Mode
-    this.setInteractionMode(INTERACTION_MODES.CORE_GIMBAL);
 
     // Start 60+ FPS Three.js rendering loop immediately
     this._startRenderLoop();
@@ -199,54 +178,72 @@ class JarvisGestureStudio {
   // =========================================================================
 
   _bindEvents() {
-    // 1. Mode Switcher
-    if (this.dom.btnModeGimbal) {
-      this.dom.btnModeGimbal.addEventListener('click', () => {
-        this.setInteractionMode(INTERACTION_MODES.CORE_GIMBAL);
+    // 1. Cinematic Intro Screen Entry & Return Controls
+    if (this.dom.enterExperienceBtn) {
+      this.dom.enterExperienceBtn.addEventListener('click', () => this.handleEnterExperience());
+    }
+    if (this.dom.returnToIntroBtn) {
+      this.dom.returnToIntroBtn.addEventListener('click', () => this.handleReturnToIntro());
+    }
+
+    // 2. Direct Target Selectors: Ring, Sphere, Torus
+    if (this.dom.chipRing) {
+      this.dom.chipRing.addEventListener('click', () => {
+        this.sceneManager.setSelectedObject(this.sceneManager.ring, false);
+        this._updateTargetChips(this.sceneManager.ring);
+        this.speechManager.playChime('select');
       });
     }
-    if (this.dom.btnModeObject) {
-      this.dom.btnModeObject.addEventListener('click', () => {
-        this.setInteractionMode(INTERACTION_MODES.OBJECT_MANIPULATE);
+    if (this.dom.chipSphere) {
+      this.dom.chipSphere.addEventListener('click', () => {
+        this.sceneManager.setSelectedObject(this.sceneManager.sphere, false);
+        this._updateTargetChips(this.sceneManager.sphere);
+        this.speechManager.playChime('select');
+      });
+    }
+    if (this.dom.chipTorus) {
+      this.dom.chipTorus.addEventListener('click', () => {
+        this.sceneManager.setSelectedObject(this.sceneManager.torus, false);
+        this._updateTargetChips(this.sceneManager.torus);
+        this.speechManager.playChime('select');
       });
     }
 
-    // 2. Voice Guidance Toggle
-    if (this.dom.toggleVoiceBtn) {
-      this.dom.toggleVoiceBtn.addEventListener('click', () => {
-        const isVoiceOn = this.speechManager.toggleVoice();
-        this.dom.toggleVoiceBtn.classList.toggle('active', isVoiceOn);
-        this.dom.voiceBtnText.textContent = `VOICE: ${isVoiceOn ? 'ON' : 'OFF'}`;
-        if (isVoiceOn) {
-          this.speechManager.speak('Voice guidance enabled.');
+    // 3. Gesture Toggle Button
+    if (this.dom.toggleGestureBtn) {
+      this.dom.toggleGestureBtn.addEventListener('click', () => {
+        const isEnabled = !this.settings.gestureControlEnabled;
+        this.settings.gestureControlEnabled = isEnabled;
+        this.interactionController.gestureControlEnabled = isEnabled;
+        if (this.dom.toggleGestureControl) this.dom.toggleGestureControl.checked = isEnabled;
+        this.dom.toggleGestureBtn.classList.toggle('active', isEnabled);
+        if (this.dom.gestureBtnText) {
+          this.dom.gestureBtnText.textContent = isEnabled ? 'GESTURES: ON' : 'GESTURES: OFF';
         }
       });
     }
 
-    // 3. Gesture Control Toggle
-    this.dom.toggleGestureBtn.addEventListener('click', () => {
-      const isEnabled = !this.settings.gestureControlEnabled;
-      this.settings.gestureControlEnabled = isEnabled;
-      this.interactionController.gestureControlEnabled = isEnabled;
-      this.dom.toggleGestureBtn.classList.toggle('active', isEnabled);
-      this.dom.gestureBtnText.textContent = `GESTURES: ${isEnabled ? 'ON' : 'OFF'}`;
-    });
-
     // 4. Reset Stage
-    this.dom.resetSceneBtn.addEventListener('click', () => this.resetStage());
-    if (this.dom.dockResetBtn) {
-      this.dom.dockResetBtn.addEventListener('click', () => this.resetStage());
+    if (this.dom.resetSceneBtn) {
+      this.dom.resetSceneBtn.addEventListener('click', () => {
+        this.sceneManager.resetScene();
+        this.interactionController.fsm.forceReset();
+        this._updateTargetChips(this.sceneManager.sphere);
+        this.speechManager.playChime('select');
+      });
     }
 
-    // 5. Mirror Toggle
-    this.dom.mirrorToggleBtn.addEventListener('click', () => this.toggleMirror());
+    // 5. Mirror & Fullscreen
+    if (this.dom.mirrorToggleBtn) {
+      this.dom.mirrorToggleBtn.addEventListener('click', () => this.toggleMirror());
+    }
+    if (this.dom.fullscreenBtn) {
+      this.dom.fullscreenBtn.addEventListener('click', () => {
+        this.sceneManager.toggleFullscreen(document.documentElement);
+      });
+    }
 
-    // 6. Fullscreen Toggle
-    this.dom.fullscreenBtn.addEventListener('click', () => {
-      this.sceneManager.toggleFullscreen(document.documentElement);
-    });
-
-    // 7. Diagnostics HUD Toggle
+    // 6. Diagnostics HUD Panel
     if (this.dom.toggleDiagBtn) {
       this.dom.toggleDiagBtn.addEventListener('click', () => this.toggleDiagnostics());
     }
@@ -257,261 +254,137 @@ class JarvisGestureStudio {
       this.dom.diagRecoverBtn.addEventListener('click', () => this.recoverPipeline());
     }
 
-    // 8. Camera start/stop
-    this.dom.toggleCameraBtn.addEventListener('click', () => this.toggleCamera());
-    this.dom.splashStartBtn.addEventListener('click', () => this.toggleCamera());
-
-    this.dom.errorRetryBtn.addEventListener('click', () => {
-      this._hideOverlay(this.dom.errorOverlay);
-      this.startCamera();
-    });
-
-    // 9. PiP minimize
-    this.dom.pipToggleBtn.addEventListener('click', () => {
-      const isMin = this.dom.pipWebcamCard.classList.toggle('minimized');
-      this.dom.pipToggleBtn.textContent = isMin ? '+' : '−';
-    });
-
-    // 10. Left Rail Collapse
-    if (this.dom.toggleLeftRailBtn) {
-      this.dom.toggleLeftRailBtn.addEventListener('click', () => {
-        const isCollapsed = this.dom.leftRail.classList.toggle('collapsed');
-        this.dom.toggleLeftRailBtn.textContent = isCollapsed ? '▶' : '◀';
+    // 7. Camera Controls
+    if (this.dom.toggleCameraBtn) {
+      this.dom.toggleCameraBtn.addEventListener('click', () => this.toggleCamera());
+    }
+    if (this.dom.splashStartBtn) {
+      this.dom.splashStartBtn.addEventListener('click', () => this.toggleCamera());
+    }
+    if (this.dom.errorRetryBtn) {
+      this.dom.errorRetryBtn.addEventListener('click', () => {
+        this._hideOverlay(this.dom.errorOverlay);
+        this.startCamera();
       });
     }
 
-    // 11. Category Filter Tabs
-    if (this.dom.inventoryCatTabs) {
-      this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-          this.dom.inventoryCatTabs.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          this.activeCategory = btn.getAttribute('data-cat') || 'all';
-          this._renderInventory();
-        });
+    // 8. PiP Toggle
+    if (this.dom.pipToggleBtn) {
+      this.dom.pipToggleBtn.addEventListener('click', () => {
+        const isMin = this.dom.pipWebcamCard.classList.toggle('minimized');
+        this.dom.pipToggleBtn.textContent = isMin ? '+' : '−';
       });
     }
 
-    // 12. Quick Action Buttons on Left Rail & Inspector
-    if (this.dom.clearEntitiesBtn) {
-      this.dom.clearEntitiesBtn.addEventListener('click', () => {
-        this.sceneManager.inventory.clearAll();
-        this._updateEntityCount();
-        this.speechManager.playChime('release');
-        this.speechManager.speak('All spawned entities cleared.');
+    // 9. Tuning Dock Controls
+    if (this.dom.smoothingSlider) {
+      this.dom.smoothingSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        this.settings.smoothing = val;
+        this.gestureDetector.setSmoothing(val);
+        if (this.dom.smoothingVal) this.dom.smoothingVal.textContent = val.toFixed(2);
       });
     }
 
-    if (this.dom.spawnCubeQuickBtn) {
-      this.dom.spawnCubeQuickBtn.addEventListener('click', () => {
-        this.spawnAsset('cube');
+    if (this.dom.rotationSlider) {
+      this.dom.rotationSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        this.settings.rotationSensitivity = val;
+        this.interactionController.setRotationSensitivity(val);
+        if (this.dom.rotationVal) this.dom.rotationVal.textContent = `${val.toFixed(1)}x`;
       });
     }
 
-    if (this.dom.actionCloneBtn) {
-      this.dom.actionCloneBtn.addEventListener('click', () => {
-        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.userData.isSpawnedEntity) {
-          const cloned = this.sceneManager.inventory.duplicateEntity(this.sceneManager.selectedObject);
-          if (cloned) {
-            this._updateEntityCount();
-            this.speechManager.playChime('select');
-            this.speechManager.speak('Entity duplicated.');
-          }
+    if (this.dom.toggleGestureControl) {
+      this.dom.toggleGestureControl.addEventListener('change', (e) => {
+        this.settings.gestureControlEnabled = e.target.checked;
+        this.interactionController.gestureControlEnabled = e.target.checked;
+        if (this.dom.toggleGestureBtn) this.dom.toggleGestureBtn.classList.toggle('active', e.target.checked);
+        if (this.dom.gestureBtnText) {
+          this.dom.gestureBtnText.textContent = e.target.checked ? 'GESTURES: ON' : 'GESTURES: OFF';
         }
       });
     }
 
-    if (this.dom.actionFreezeBtn) {
-      this.dom.actionFreezeBtn.addEventListener('click', () => {
-        if (this.sceneManager.jarvisCore) {
-          const next = !this.sceneManager.jarvisCore.isFrozen;
-          this.sceneManager.jarvisCore.setFrozen(next);
-          this.speechManager.playChime('select');
-          this.speechManager.speak(next ? 'Mechanism frozen.' : 'Mechanism active.');
-        }
+    if (this.dom.toggleOrbitControls) {
+      this.dom.toggleOrbitControls.addEventListener('change', (e) => {
+        this.settings.orbitControlsEnabled = e.target.checked;
+        this.sceneManager.controls.enabled = e.target.checked;
       });
     }
 
-    if (this.dom.actionDeleteBtn) {
-      this.dom.actionDeleteBtn.addEventListener('click', () => {
-        if (this.sceneManager.selectedObject && this.sceneManager.selectedObject.userData.isSpawnedEntity) {
-          this.sceneManager.inventory.deleteEntity(this.sceneManager.selectedObject);
-          this._updateEntityCount();
-          this.speechManager.playChime('release');
-          this.speechManager.speak('Entity deleted.');
+    if (this.dom.togglePipWebcam) {
+      this.dom.togglePipWebcam.addEventListener('change', (e) => {
+        if (this.dom.pipWebcamCard) {
+          this.dom.pipWebcamCard.style.display = e.target.checked ? 'flex' : 'none';
         }
-      });
-    }
-
-    if (this.dom.quickCoreFocusBtn) {
-      this.dom.quickCoreFocusBtn.addEventListener('click', () => {
-        this.setInteractionMode(INTERACTION_MODES.CORE_GIMBAL);
-        this.sceneManager.controls.target.set(0, 0.25, 0);
-        this.sceneManager.camera.position.set(0, 1.4, 6.2);
-        this.sceneManager.controls.update();
-        this.speechManager.playChime('select');
       });
     }
   }
 
   // =========================================================================
-  // INTERACTION MODES & WORKSPACE CONTROLS
+  // CINEMATIC INTRO SCREEN & FLUID WORKSPACE TRANSITION (750ms)
   // =========================================================================
 
-  setInteractionMode(mode) {
-    this.sceneManager.setInteractionMode(mode);
-
-    if (this.dom.btnModeGimbal) {
-      this.dom.btnModeGimbal.classList.toggle('active', mode === INTERACTION_MODES.CORE_GIMBAL);
-    }
-    if (this.dom.btnModeObject) {
-      this.dom.btnModeObject.classList.toggle('active', mode === INTERACTION_MODES.OBJECT_MANIPULATE);
-    }
-
-    if (mode === INTERACTION_MODES.CORE_GIMBAL) {
-      this._updateInspector(this.sceneManager.jarvisCore.root);
-      this.speechManager.speak('Core Gimbal Mode active. Pinch to rotate central mechanism.');
-    } else {
-      const target = this.sceneManager.inventory.spawnedEntities[0] || this.sceneManager.jarvisCore.root;
-      this._updateInspector(target);
-      this.speechManager.speak('Entity Manipulate Mode active. Point and pinch to manipulate 3D objects.');
-    }
+  handleEnterExperience() {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
 
     this.speechManager.playChime('select');
+
+    // 1. Smoothly fade out intro screen overlay via CSS
+    if (this.dom.cinematicIntroScreen) {
+      this.dom.cinematicIntroScreen.classList.add('transitioning-out');
+    }
+
+    // 2. Start 3D Hermite smooth camera & core contraction transition
+    this.sceneManager.startWorkspaceTransition(() => {
+      this.isTransitioning = false;
+      if (this.dom.cinematicIntroScreen) {
+        this.dom.cinematicIntroScreen.style.display = 'none';
+      }
+
+      // Reveal workspace panels smoothly
+      document.body.classList.remove('in-intro-mode');
+      this._updateTargetChips(this.sceneManager.sphere);
+
+      // Initialize camera asynchronously in background without freezing transition
+      if (!this.isRunning) {
+        this.startCamera().catch(err => console.warn('Background camera auto-start:', err));
+      }
+    });
   }
 
-  resetStage() {
-    this.sceneManager.resetScene();
-    this.interactionController.fsm.forceReset();
-    this._updateInspector(this.sceneManager.jarvisCore.root);
+  handleReturnToIntro() {
+    if (this.isTransitioning) return;
+
     this.speechManager.playChime('select');
-    this.speechManager.speak('Stage spatial transforms reset.');
+    this.sceneManager.returnToIntro();
+
+    if (this.dom.cinematicIntroScreen) {
+      this.dom.cinematicIntroScreen.style.display = 'flex';
+      void this.dom.cinematicIntroScreen.offsetWidth; // Force reflow
+      this.dom.cinematicIntroScreen.classList.remove('transitioning-out');
+    }
+
+    document.body.classList.add('in-intro-mode');
   }
 
   // =========================================================================
-  // INVENTORY RENDERING & SPAWNING
+  // TARGET CHIPS SYNCHRONIZATION
   // =========================================================================
 
-  _renderInventory() {
-    // 1. Left Rail Vertical Items
-    if (this.dom.inventoryItemsGrid) {
-      this.dom.inventoryItemsGrid.innerHTML = '';
-      const filtered = INVENTORY_ASSETS.filter(a => this.activeCategory === 'all' || a.cat === this.activeCategory);
-
-      filtered.forEach(asset => {
-        const card = document.createElement('div');
-        card.className = 'inventory-item-card';
-        card.title = `Spawn ${asset.name}`;
-        card.innerHTML = `
-          <div class="item-icon-box">${asset.icon}</div>
-          <div class="item-info-col">
-            <span class="item-name">${asset.name}</span>
-            <span class="item-desc">${asset.desc}</span>
-          </div>
-        `;
-        card.addEventListener('click', () => {
-          this.spawnAsset(asset.id);
-        });
-        this.dom.inventoryItemsGrid.appendChild(card);
-      });
-    }
-
-    // 2. Bottom Dock Horizontal Spawn Tray
-    if (this.dom.dockSpawnTray) {
-      this.dom.dockSpawnTray.innerHTML = '';
-      INVENTORY_ASSETS.forEach(asset => {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'dock-spawn-chip';
-        chip.title = `Spawn ${asset.name}`;
-        chip.innerHTML = `<span>${asset.icon}</span> <span>${asset.name}</span>`;
-        chip.addEventListener('click', () => {
-          this.spawnAsset(asset.id);
-        });
-        this.dom.dockSpawnTray.appendChild(chip);
-      });
-    }
-  }
-
-  spawnAsset(assetId) {
-    const spawned = this.sceneManager.inventory.spawnEntity(assetId);
-    if (spawned) {
-      this._updateEntityCount();
-      this.setInteractionMode(INTERACTION_MODES.OBJECT_MANIPULATE);
-      this._updateInspector(spawned);
-      this.speechManager.playChime('grab');
-      this.speechManager.speak(`Spawned ${spawned.name}.`);
-    }
-  }
-
-  _updateEntityCount() {
-    const count = this.sceneManager.inventory.getEntityCount();
-    if (this.dom.dockEntityCount) {
-      this.dom.dockEntityCount.textContent = `ENTITIES: ${count}`;
-    }
-  }
-
-  // =========================================================================
-  // SELECTED ENTITY TELEMETRY INSPECTOR
-  // =========================================================================
-
-  _updateInspector(targetObj) {
+  _updateTargetChips(targetObj) {
     if (!targetObj) return;
-
-    const name = targetObj.name || 'Holographic Target';
-    const isCore = targetObj === this.sceneManager.jarvisCore.root;
-
+    const name = targetObj.name;
+    if (this.dom.chipRing) this.dom.chipRing.classList.toggle('active', name === 'Holographic Ring');
+    if (this.dom.chipSphere) this.dom.chipSphere.classList.toggle('active', name === 'Arc Reactor Sphere');
+    if (this.dom.chipTorus) this.dom.chipTorus.classList.toggle('active', name === 'Torus Accelerator');
     if (this.dom.hudObjectVal) this.dom.hudObjectVal.textContent = name;
-    if (this.dom.inspectorCategoryTag) {
-      this.dom.inspectorCategoryTag.textContent = isCore ? 'CENTRAL MECHANISM' : 'SPATIAL ENTITY';
-    }
-
-    // Position coordinates
-    if (this.dom.hudTargetX) this.dom.hudTargetX.textContent = targetObj.position.x.toFixed(2);
-    if (this.dom.hudTargetY) this.dom.hudTargetY.textContent = targetObj.position.y.toFixed(2);
-    if (this.dom.hudTargetZ) this.dom.hudTargetZ.textContent = targetObj.position.z.toFixed(2);
-
-    // Rotation readout (degrees)
-    if (this.dom.hudTargetRot) {
-      const toDeg = 180 / Math.PI;
-      const rx = ((targetObj.rotation.x * toDeg) % 360 + 360) % 360;
-      const ry = ((targetObj.rotation.y * toDeg) % 360 + 360) % 360;
-      const rz = ((targetObj.rotation.z * toDeg) % 360 + 360) % 360;
-      this.dom.hudTargetRot.textContent = `R: ${rx.toFixed(0)}° | P: ${ry.toFixed(0)}° | Y: ${rz.toFixed(0)}°`;
-    }
-
-    // Scale readout
-    if (this.dom.hudTargetScale) {
-      this.dom.hudTargetScale.textContent = `${targetObj.scale.x.toFixed(2)}x`;
-    }
-
-    // Toggle delete button availability (can't delete central core)
-    if (this.dom.actionDeleteBtn) {
-      this.dom.actionDeleteBtn.style.display = isCore ? 'none' : 'inline-block';
-    }
-    if (this.dom.actionCloneBtn) {
-      this.dom.actionCloneBtn.style.display = isCore ? 'none' : 'inline-block';
-    }
-  }
-
-  _onGestureTriggered(action, target) {
-    if (action === 'GRAB') {
-      this.speechManager.playChime('grab');
-    } else if (action === 'RELEASE') {
-      this.speechManager.playChime('release');
-    } else if (action === 'BURST') {
-      this.speechManager.playChime('burst');
-      this.speechManager.speak('Radial energy pulse triggered!');
-    } else if (action === 'FREEZE') {
-      this.speechManager.playChime('select');
-      this.speechManager.speak('Core manipulation frozen.');
-    } else if (action === 'UNFREEZE') {
-      this.speechManager.playChime('release');
-    }
   }
 
   // =========================================================================
-  // CAMERA & MEDIAPIPE TRACKING PIPELINE
+  // RESIZE & SETTINGS
   // =========================================================================
 
   _setupResizeHandlers() {
@@ -524,6 +397,9 @@ class JarvisGestureStudio {
     };
 
     window.addEventListener('resize', onResize);
+    const observer = new ResizeObserver(onResize);
+    observer.observe(this.dom.threeCard);
+    observer.observe(this.dom.cameraStage);
     onResize();
   }
 
@@ -560,87 +436,58 @@ class JarvisGestureStudio {
 
     try {
       await this.detector.initialize(({ message }) => {
-        this.dom.loadingMessage.textContent = message.toUpperCase();
+        if (this.dom.loadingMessage) this.dom.loadingMessage.textContent = message.toUpperCase();
       });
 
-      this.dom.loadingMessage.textContent = 'CONNECTING OPTICAL SCANNER...';
       await this.camera.start();
+      this.renderer.resize(this.dom.cameraStage.clientWidth, this.dom.cameraStage.clientHeight);
 
-      const rect = this.dom.cameraStage.getBoundingClientRect();
-      this.renderer.resize(rect.width, rect.height);
+      this.scheduler.start(this.dom.video);
+      this.isRunning = true;
+      this.recoveryAttempts = 0;
 
       this._hideOverlay(this.dom.loadingOverlay);
-      this.isRunning = true;
-      this.telemetry.reset();
-      this.detector.resetCounters();
-      this.videoScheduler.start();
-
       this._updateStatusBeacon(TRACKING_STATES.TRACKING);
-      this._updateButtonToStopMode();
-
-      this.dom.pipStatusDot.classList.add('active');
-      this.speechManager.speak('Optical scanner connected. Hand tracking active.');
-
+      if (this.dom.cameraBtnText) this.dom.cameraBtnText.textContent = 'DISENGAGE SENSORS';
+      if (this.dom.toggleCameraBtn) this.dom.toggleCameraBtn.classList.add('active');
     } catch (err) {
-      console.error('Camera or model start error:', err);
+      console.error('Camera pipeline failed:', err);
+      this._showOverlay(this.dom.errorOverlay);
+      if (this.dom.errorMessage) this.dom.errorMessage.textContent = err.message || 'DEVICE INITIALIZATION FAILED';
+      this._updateStatusBeacon(TRACKING_STATES.ERROR);
       this.stopCamera();
-      this._showError(err.message);
     }
   }
 
   stopCamera() {
-    this.isRunning = false;
-    this.videoScheduler.stop();
+    this.scheduler.stop();
     this.camera.stop();
     this.renderer.clear();
-    this.telemetry.reset();
+    this.isRunning = false;
 
-    this.interactionController.fsm.forceReset();
-    this.dom.screenVirtualCursor.classList.add('hidden');
-    this.sceneManager.updateCursor(null);
+    if (this.dom.screenVirtualCursor) this.dom.screenVirtualCursor.classList.add('hidden');
+    if (this.sceneManager.virtualCursor3D) this.sceneManager.virtualCursor3D.visible = false;
     this.sceneManager.setHoveredObject(null);
 
-    this._updateStatusBeacon(TRACKING_STATES.STOPPED);
-    this._updateButtonToStartMode();
-    this._hideOverlay(this.dom.loadingOverlay);
     this._showOverlay(this.dom.idleOverlay);
-
-    this.dom.pipStatusDot.classList.remove('active');
-    this.dom.cardHandsCount.textContent = '0 HANDS';
-    this.dom.cardLatency.textContent = '-- ms';
-    this.dom.hudStatePill.textContent = 'STANDBY';
-    this.dom.hudGestureVal.textContent = 'STANDBY';
+    this._hideOverlay(this.dom.loadingOverlay);
+    this._updateStatusBeacon(TRACKING_STATES.STOPPED);
+    if (this.dom.cameraBtnText) this.dom.cameraBtnText.textContent = 'ENGAGE SENSORS';
+    if (this.dom.toggleCameraBtn) this.dom.toggleCameraBtn.classList.remove('active');
   }
 
   async recoverPipeline() {
     if (this.isRecovering) return;
     this.isRecovering = true;
-    console.warn('Initiating controlled optical pipeline recovery...');
-    this._showOverlay(this.dom.loadingOverlay);
-    this.dom.loadingMessage.textContent = 'RECOVERING OPTICAL PIPELINE...';
+    console.warn('Recovering optical tracking pipeline...');
 
     try {
-      this.videoScheduler.stop();
-      this.camera.stop();
-
-      this.detector.resetCounters();
-      this.gestureDetector.needsFilterReset = true;
-      this.interactionController.fsm.forceReset();
-
-      await new Promise(r => setTimeout(r, 200));
-
-      await this.camera.start();
-      const rect = this.dom.cameraStage.getBoundingClientRect();
-      this.renderer.resize(rect.width, rect.height);
-
-      this.videoScheduler.start();
-      this.isRunning = true;
-      this._hideOverlay(this.dom.loadingOverlay);
-      this._updateStatusBeacon(TRACKING_STATES.TRACKING);
-    } catch (err) {
-      console.error('Optical pipeline recovery failed:', err);
       this.stopCamera();
-      this._showError('RECOVERY FAILED: ' + err.message);
+      await new Promise(res => setTimeout(res, 250));
+      this.detector.cleanup();
+      await this.startCamera();
+    } catch (e) {
+      console.error('Recovery failed:', e);
     } finally {
       this.isRecovering = false;
     }
@@ -648,152 +495,158 @@ class JarvisGestureStudio {
 
   toggleMirror() {
     this.settings.mirrorPreview = !this.settings.mirrorPreview;
-    this.renderer.options.mirrored = this.settings.mirrorPreview;
     this.dom.cameraStage.classList.toggle('mirrored', this.settings.mirrorPreview);
-    this.dom.mirrorToggleBtn.classList.toggle('active', this.settings.mirrorPreview);
-    this.dom.mirrorBtnLabel.textContent = `MIRROR: ${this.settings.mirrorPreview ? 'ON' : 'OFF'}`;
+    this.renderer.options.mirrored = this.settings.mirrorPreview;
+    if (this.dom.mirrorBtnLabel) {
+      this.dom.mirrorBtnLabel.textContent = `MIRROR: ${this.settings.mirrorPreview ? 'ON' : 'OFF'}`;
+    }
   }
 
-  /**
-   * Primary Render Loop (Runs at full monitor refresh 60/120 Hz)
-   */
+  // =========================================================================
+  // HARDWARE VIDEO FRAME SCHEDULER CALLBACK (INFERENCE PIPELINE)
+  // =========================================================================
+
+  _onVideoFrame(video, timestamp, metadata) {
+    if (!this.isRunning) return;
+
+    const frameAge = metadata ? (performance.now() - metadata.presentationTime) : 0;
+    this.telemetry.recordVideoFrameAdvance(frameAge);
+
+    const infStartTime = performance.now();
+    const result = this.detector.detect(video, infStartTime);
+    const infDuration = performance.now() - infStartTime;
+
+    const hasHands = result && result.landmarks && result.landmarks.length > 0;
+    this.telemetry.recordInference(infDuration, hasHands ? result.landmarks.length : 0);
+
+    if (result) {
+      this.renderer.render(result.landmarks, result.handednesses);
+    } else {
+      this.renderer.clear();
+    }
+
+    if (hasHands) {
+      const gestureFrame = this.gestureDetector.process(
+        result.landmarks,
+        result.handednesses,
+        this.dom.video.videoWidth,
+        this.dom.video.videoHeight,
+        this.settings.mirrorPreview
+      );
+
+      this.latestGestureFrame = gestureFrame;
+      this.latestInteractionStatus = this.interactionController.updateInference(gestureFrame, infStartTime);
+
+      this._updateVirtualCursor(gestureFrame);
+      this._updateStatusBeacon(TRACKING_STATES.TRACKING);
+    } else {
+      this.latestGestureFrame = null;
+      this.latestInteractionStatus = this.interactionController.updateInference(null, infStartTime);
+
+      if (this.dom.screenVirtualCursor) this.dom.screenVirtualCursor.classList.add('hidden');
+      if (this.sceneManager.virtualCursor3D) this.sceneManager.virtualCursor3D.visible = false;
+      this._updateStatusBeacon(TRACKING_STATES.SEARCHING);
+    }
+  }
+
+  _onSchedulerTimeout() {
+    this.telemetry.recordFrameStall();
+  }
+
+  // =========================================================================
+  // DECOUPLED THREE.JS RENDER LOOP (60+ FPS)
+  // =========================================================================
+
   _startRenderLoop() {
-    const loop = (timestamp) => {
-      const dt = Math.max(0.001, Math.min(0.05, (timestamp - this.lastRenderTime) / 1000.0));
-      this.lastRenderTime = timestamp;
+    const loop = (currentTime) => {
+      this.animationFrameId = requestAnimationFrame(loop);
 
-      // 1. Tick render telemetry
-      this.telemetry.tickRender(timestamp);
+      const delta = (currentTime - this.lastRenderTime) / 1000;
+      this.lastRenderTime = currentTime;
 
-      // 2. Continuous 3D mesh interpolation tick
-      this.interactionController.tickRender(dt);
-
-      // 3. Render Three.js 3D Scene
+      this.telemetry.tickRender(currentTime);
+      this.interactionController.renderInterpolate(delta, currentTime);
       this.sceneManager.render();
 
-      // 4. Update on-screen virtual cursor position on compositor
-      if (this.latestGestureFrame && this.latestGestureFrame.handCount > 0 && !this.latestGestureFrame.isTrackingLost) {
-        this._updateScreenCursor(this.latestGestureFrame.cursor);
-      } else {
-        this.dom.screenVirtualCursor.classList.add('hidden');
-      }
-
-      // 5. Throttled DOM updates (12 Hz) to eliminate layout recalculations
-      if (timestamp - this.lastDomUpdateTime > this.domUpdateIntervalMs) {
-        this.lastDomUpdateTime = timestamp;
+      if (currentTime - this.lastDomUpdateTime >= this.domUpdateIntervalMs) {
         this._updateThrottledDOM();
+        this.lastDomUpdateTime = currentTime;
       }
-
-      this.animationFrameId = requestAnimationFrame(loop);
     };
 
     this.animationFrameId = requestAnimationFrame(loop);
   }
 
-  /**
-   * Decoupled Hand Landmark Inference Tick (invoked by VideoFrameScheduler on new hardware video frame)
-   */
-  _onVideoFrame(frameTime, metadata) {
-    if (!this.isRunning || this.detector.isInferring) return;
+  _updateVirtualCursor(gestureFrame) {
+    if (!gestureFrame || !this.dom.screenVirtualCursor) return;
 
-    const result = this.detector.detect(this.dom.video, frameTime);
-    if (result) {
-      const handCount = result.landmarks.length;
+    const { screenX, screenY, gesture, isPinching } = gestureFrame;
 
-      this.telemetry.recordInference(result.inferenceTimeMs, handCount, frameTime);
-      this.renderer.render(result.landmarks, result.handedness);
+    this.dom.screenVirtualCursor.classList.remove('hidden');
+    this.dom.screenVirtualCursor.style.transform = `translate3d(${screenX}px, ${screenY}px, 0)`;
 
-      const gestureFrame = this.gestureDetector.process(
-        result.landmarks,
-        this.settings.mirrorPreview,
-        frameTime
-      );
-      this.latestGestureFrame = gestureFrame;
-
-      const interactionStatus = this.interactionController.updateInference(gestureFrame, frameTime);
-      this.latestInteractionStatus = interactionStatus;
+    if (this.dom.cursorLabel) {
+      this.dom.cursorLabel.textContent = isPinching ? 'GRAB' : gesture;
     }
   }
 
-  /**
-   * Update 2D Screen Reticle directly via CSS transform (GPU compositor)
-   */
-  _updateScreenCursor(cursorCoords) {
-    const el = this.dom.screenVirtualCursor;
-    if (!cursorCoords) {
-      el.classList.add('hidden');
-      return;
-    }
-
-    el.classList.remove('hidden');
-    const px = cursorCoords.x * window.innerWidth;
-    const py = cursorCoords.y * window.innerHeight;
-
-    el.style.transform = `translate3d(${px}px, ${py}px, 0)`;
-
-    const state = this.interactionController.fsm.currentState;
-    el.classList.toggle('grabbing', state === INTERACTION_STATES.DRAGGING);
-    el.classList.toggle('scaling', state === INTERACTION_STATES.SCALING);
-
-    if (state === INTERACTION_STATES.SCALING) {
-      this.dom.cursorLabel.textContent = 'SCALE';
-    } else if (state === INTERACTION_STATES.DRAGGING) {
-      this.dom.cursorLabel.textContent = 'LOCK';
-    } else {
-      this.dom.cursorLabel.textContent = 'POINT';
-    }
-  }
-
-  /**
-   * Batched DOM updates executed at 12 Hz
-   */
   _updateThrottledDOM() {
     const snap = this.telemetry.getSnapshot();
 
-    // Telemetry text
-    this.dom.cardRenderFps.textContent = `${snap.renderFps}`;
-    this.dom.cardLatency.textContent = `${snap.inferenceTimeMs} ms`;
-    this.dom.cardHandsCount.textContent = `${snap.handsDetected} HAND${snap.handsDetected === 1 ? '' : 'S'}`;
-    this.dom.pipInferenceRate.textContent = `${snap.inferenceFps} INF/S`;
+    // Telemetry Top Right
+    if (this.dom.cardRenderFps) this.dom.cardRenderFps.textContent = `${snap.renderFps}`;
+    if (this.dom.cardLatency) this.dom.cardLatency.textContent = `${snap.inferenceTimeMs} ms`;
+    if (this.dom.cardHandsCount) this.dom.cardHandsCount.textContent = `${snap.handsDetected} HAND${snap.handsDetected === 1 ? '' : 'S'}`;
+    if (this.dom.pipInferenceRate) this.dom.pipInferenceRate.textContent = `${snap.inferenceFps} INF/S`;
 
-    // Performance adaptation badge
-    if (snap.isDegraded) {
-      this.dom.perfDegradedTag.textContent = 'THROTTLED';
-      this.dom.perfDegradedTag.style.color = '#ffb800';
-    } else {
-      this.dom.perfDegradedTag.textContent = 'OPTIMAL';
-      this.dom.perfDegradedTag.style.color = '#00f59b';
+    if (this.dom.perfDegradedTag) {
+      if (snap.isDegraded) {
+        this.dom.perfDegradedTag.textContent = 'THROTTLED';
+        this.dom.perfDegradedTag.style.color = '#ffb800';
+      } else {
+        this.dom.perfDegradedTag.textContent = 'OPTIMAL';
+        this.dom.perfDegradedTag.style.color = '#00f59b';
+      }
     }
 
-    // Interaction state & Target object
+    // Top Left Tactical Target Coordinates & Gesture
     if (this.latestInteractionStatus) {
-      const { interactionState, detectedGesture } = this.latestInteractionStatus;
-      this.dom.hudStatePill.textContent = interactionState;
+      const { detectedGesture, interactionState, heldObject, hoveredObject } = this.latestInteractionStatus;
+      if (this.dom.hudGestureVal) this.dom.hudGestureVal.textContent = detectedGesture;
+      if (this.dom.hudGestureIcon) this.dom.hudGestureIcon.textContent = this._getGestureIcon(detectedGesture);
+      if (this.dom.hudStatePill) this.dom.hudStatePill.textContent = interactionState;
 
-      // Update Inspector coordinates for active target
-      const activeObj = this.interactionController.heldObject || this.sceneManager.hoveredObject || this.sceneManager.selectedObject;
-      if (activeObj) {
-        this._updateInspector(activeObj);
-      }
-
-      // Gesture badge
-      this.dom.hudGestureVal.textContent = detectedGesture;
-      this.dom.hudGestureIcon.textContent = this._getGestureIcon(detectedGesture);
-
-      const hints = {
-        [GESTURE_TYPES.PINCH]: 'Grabbing & rotating selected 3D target',
-        [GESTURE_TYPES.POINTING]: 'Hover targeting & cursor tracking',
-        [GESTURE_TYPES.OPEN_PALM]: 'Radial energy shockwave released',
-        [GESTURE_TYPES.FIST]: 'Spatial rotation locked and frozen',
-        [GESTURE_TYPES.TWO_HAND_SCALE]: 'Dynamic proportional distance scaling',
-        [GESTURE_TYPES.NEUTRAL]: 'Observing spatial workspace'
-      };
-      if (this.dom.gestureHintText) {
-        this.dom.gestureHintText.textContent = hints[detectedGesture] || 'Ready for hand input';
+      const activeTarget = heldObject || hoveredObject || this.sceneManager.selectedObject;
+      if (activeTarget) {
+        const p = activeTarget.position;
+        if (this.dom.hudTargetX) this.dom.hudTargetX.textContent = p.x.toFixed(2);
+        if (this.dom.hudTargetY) this.dom.hudTargetY.textContent = p.y.toFixed(2);
+        if (this.dom.hudTargetZ) this.dom.hudTargetZ.textContent = p.z.toFixed(2);
+        if (this.dom.hudObjectVal) this.dom.hudObjectVal.textContent = activeTarget.name;
       }
     }
 
-    // Live Diagnostics Panel Updates
+    // Intro Screen Telemetry Feedback (While in Intro State)
+    if (this.dom.introBeaconLabel && this.dom.introSensorText) {
+      if (this.isRunning) {
+        if (snap.handsDetected > 0) {
+          this.dom.introBeaconLabel.textContent = `OPTICAL SENSOR // ${snap.handsDetected} HAND DETECTED`;
+          this.dom.introSensorText.textContent = 'OPTICAL SENSOR ACTIVE — AIR GESTURES READY';
+          if (this.dom.introBeaconDot) this.dom.introBeaconDot.style.background = '#00f59b';
+          if (this.dom.introSensorDot) this.dom.introSensorDot.style.background = '#00f59b';
+        } else {
+          this.dom.introBeaconLabel.textContent = 'OPTICAL SENSOR // SEARCHING';
+          this.dom.introSensorText.textContent = 'SENSOR ACTIVE — CLICK TO ENTER';
+          if (this.dom.introBeaconDot) this.dom.introBeaconDot.style.background = '#00f0ff';
+          if (this.dom.introSensorDot) this.dom.introSensorDot.style.background = '#00f0ff';
+        }
+      } else {
+        this.dom.introBeaconLabel.textContent = 'OPTICAL SENSOR // STANDBY';
+        this.dom.introSensorText.textContent = 'SENSOR STANDBY — CLICK TO ENTER';
+      }
+    }
+
+    // Diagnostics Panel Telemetry
     if (this.showDiagnostics && this.dom.diagnosticsPanel) {
       if (this.dom.diagSchedulerType) this.dom.diagSchedulerType.textContent = snap.schedulerType;
       if (this.dom.diagStreamAdvancing) {
@@ -801,7 +654,6 @@ class JarvisGestureStudio {
         this.dom.diagStreamAdvancing.className = snap.isStreamAdvancing ? 'diag-val font-mono text-emerald' : 'diag-val font-mono text-danger';
       }
       if (this.dom.diagFrameAge) this.dom.diagFrameAge.textContent = `${snap.cameraFrameAgeMs} ms`;
-      if (this.dom.diagTimeSinceInf) this.dom.diagTimeSinceInf.textContent = `${snap.timeSinceLastInferenceMs} ms`;
       if (this.dom.diagInfDuration) this.dom.diagInfDuration.textContent = `${snap.inferenceTimeMs} ms`;
       if (this.dom.diagInferring) {
         this.dom.diagInferring.textContent = snap.isInferring ? 'ACTIVE' : 'IDLE';
@@ -811,7 +663,6 @@ class JarvisGestureStudio {
         this.dom.diagConsecErrors.textContent = `${snap.consecutiveErrors}`;
         this.dom.diagConsecErrors.style.color = snap.consecutiveErrors > 0 ? '#ef4444' : '';
       }
-      if (this.dom.diagSkippedFrames) this.dom.diagSkippedFrames.textContent = `${snap.skippedFrames}`;
       if (this.dom.diagCondition) this.dom.diagCondition.textContent = snap.trackingCondition;
       if (this.dom.diagRenderFps) this.dom.diagRenderFps.textContent = `${snap.renderFps} FPS`;
       if (this.dom.diagDelegate) {
@@ -819,11 +670,10 @@ class JarvisGestureStudio {
       }
     }
 
-    // Automated Watchdog Recovery
+    // Auto-Recovery Watchdog
     if (this.isRunning && !this.isRecovering && snap.consecutiveErrors > 15) {
       if (this.recoveryAttempts < 2) {
         this.recoveryAttempts++;
-        console.warn(`Watchdog detected ${snap.consecutiveErrors} consecutive errors. Triggering automatic recovery (attempt ${this.recoveryAttempts}/2)...`);
         this.recoverPipeline();
       }
     } else if (snap.consecutiveErrors === 0 && this.recoveryAttempts > 0) {
@@ -833,17 +683,18 @@ class JarvisGestureStudio {
 
   _getGestureIcon(gesture) {
     switch (gesture) {
-      case GESTURE_TYPES.PINCH: return '🤏';
-      case GESTURE_TYPES.POINTING: return '👆';
-      case GESTURE_TYPES.OPEN_PALM: return '🖐️';
-      case GESTURE_TYPES.FIST: return '✊';
-      case GESTURE_TYPES.TWO_HAND_SCALE: return '👐';
-      default: return '◈';
+      case 'PINCH': return '🤏';
+      case 'POINTING': return '👆';
+      case 'OPEN_PALM': return '🖐️';
+      case 'FIST': return '✊';
+      case 'TWO_HAND_SCALE': return '👐';
+      default: return '✦';
     }
   }
 
   _updateStatusBeacon(state) {
     const beacon = this.dom.globalBeacon;
+    if (!beacon) return;
     beacon.className = 'reactor-core-beacon';
 
     if (state === TRACKING_STATES.TRACKING) {
@@ -853,30 +704,24 @@ class JarvisGestureStudio {
     } else if (state === TRACKING_STATES.ERROR) {
       beacon.classList.add('error');
     }
+
+    if (this.dom.pipStatusDot) {
+      this.dom.pipStatusDot.className = 'pip-pulse-dot';
+      if (state === TRACKING_STATES.TRACKING) this.dom.pipStatusDot.classList.add('active');
+      if (state === TRACKING_STATES.ERROR) this.dom.pipStatusDot.classList.add('error');
+    }
   }
 
-  _updateButtonToStopMode() {
-    this.dom.toggleCameraBtn.classList.add('btn-stopping');
-    this.dom.cameraBtnText.textContent = 'DISENGAGE';
+  _showOverlay(el) {
+    if (el) el.classList.remove('hidden');
   }
 
-  _updateButtonToStartMode() {
-    this.dom.toggleCameraBtn.classList.remove('btn-stopping');
-    this.dom.cameraBtnText.textContent = 'ENGAGE SENSORS';
-  }
-
-  _showOverlay(el) { el.classList.remove('hidden'); }
-  _hideOverlay(el) { el.classList.add('hidden'); }
-
-  _showError(message) {
-    this.dom.errorMessage.textContent = message.toUpperCase();
-    this._hideOverlay(this.dom.loadingOverlay);
-    this._showOverlay(this.dom.errorOverlay);
-    this._updateStatusBeacon(TRACKING_STATES.ERROR);
+  _hideOverlay(el) {
+    if (el) el.classList.add('hidden');
   }
 }
 
-// Bootstrap JARVIS studio on DOM load
+// Bootstrap Application
 window.addEventListener('DOMContentLoaded', () => {
-  window.jarvisStudio = new JarvisGestureStudio();
+  window.__gestureFlowStudio = new JarvisGestureStudio();
 });

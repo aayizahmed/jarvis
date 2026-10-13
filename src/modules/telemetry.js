@@ -91,6 +91,10 @@ export class TelemetryManager {
     this.renderFps = this.frameTimestamps.length;
   }
 
+  recordRenderFrame(timestamp) {
+    this.tickRender(timestamp);
+  }
+
   /**
    * Called when a camera frame inference finishes
    */
@@ -123,6 +127,10 @@ export class TelemetryManager {
     if (this.state !== TRACKING_STATES.STOPPED && this.state !== TRACKING_STATES.ERROR && this.state !== TRACKING_STATES.INITIALIZING) {
       this.state = handCount > 0 ? TRACKING_STATES.TRACKING : TRACKING_STATES.SEARCHING;
     }
+  }
+
+  recordFrameStall() {
+    this.isPerformanceDegraded = true;
   }
 
   getSnapshot() {

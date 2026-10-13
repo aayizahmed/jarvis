@@ -1,9 +1,10 @@
 /**
- * GestureFlow — Cinematic JARVIS Holographic Core Mechanism
- * Real-time 3D metallic gyroscope with multi-axis concentric rings,
- * brushed silver/chrome materials, radiant cyan energy sphere,
- * orbiting spark swarm, radial measurement markings, and seamless
- * hand-controlled gesture interaction.
+ * GestureFlow — Cinematic Holographic Mechanism
+ * Pure Three.js central mechanism featuring:
+ * 1. Glowing central energy sphere with harmonic breathing
+ * 2. Concentric orbital rings and torus rotating independently on multi-axes
+ * 3. Brushed silver/graphite metallic finishes with cyan highlights
+ * 4. Silky-smooth mathematical 60+ FPS delta-time animation & easing
  */
 
 import * as THREE from 'three';
@@ -12,7 +13,7 @@ export class JarvisCore {
   constructor(scene) {
     this.scene = scene;
 
-    // Root container (interactive target)
+    // Root container
     this.root = new THREE.Group();
     this.root.name = 'Holographic Core Mechanism';
     this.root.userData = {
@@ -27,17 +28,11 @@ export class JarvisCore {
     this.isFrozen = false;
     this.isPulseActive = false;
     this.pulseTimer = 0.0;
-    this.pulseScale = 1.0;
 
     // Independent Angular Speeds (Radians / Sec)
-    this.innerSpeedX = 0.65;
-    this.middleSpeedY = -0.42;
-    this.outerSpeedZ = 0.28;
-    this.orbitSwarmSpeed = 0.95;
-
-    // Scratchpad math objects for zero-GC in-loop calculation
-    this._qDelta = new THREE.Quaternion();
-    this._vTmp = new THREE.Vector3();
+    this.innerSpeedX = 0.55;
+    this.middleSpeedY = -0.38;
+    this.outerSpeedZ = 0.25;
 
     // Core Components
     this.energySphere = null;
@@ -48,17 +43,9 @@ export class JarvisCore {
     this.ringMiddleGroup = null;
     this.ringOuterGroup = null;
 
-    this.rings = [];
-    this.swarm = null;
-    this.swarmPositions = null;
-    this.swarmAngles = null;
-    this.swarmRadii = null;
-
     this._initMaterials();
     this._buildEnergyCore();
     this._buildGyroscopeRings();
-    this._buildOrbitingSwarm();
-    this._buildRadialHUDMarkings();
 
     this.scene.add(this.root);
   }
@@ -69,9 +56,9 @@ export class JarvisCore {
       color: 0x94a3b8,
       emissive: 0x0f172a,
       emissiveIntensity: 0.15,
-      metalness: 0.94,
-      roughness: 0.22,
-      clearcoat: 0.75,
+      metalness: 0.95,
+      roughness: 0.18,
+      clearcoat: 0.8,
       clearcoatRoughness: 0.12,
       reflectivity: 0.95
     });
@@ -79,9 +66,9 @@ export class JarvisCore {
     // 2. Graphite Dark Grey Structural Material
     this.graphiteMat = new THREE.MeshPhysicalMaterial({
       color: 0x1e2530,
-      metalness: 0.88,
-      roughness: 0.32,
-      clearcoat: 0.4
+      metalness: 0.9,
+      roughness: 0.28,
+      clearcoat: 0.45
     });
 
     // 3. Electric Cyan Holographic Emissive Wireframe Material
@@ -122,7 +109,7 @@ export class JarvisCore {
     const atmoMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.35,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending
     });
@@ -130,7 +117,7 @@ export class JarvisCore {
     coreContainer.add(this.energyAtmosphere);
 
     // 3. Central Point Light Casting Soft Illumination
-    this.pointLight = new THREE.PointLight(0x00f0ff, 3.2, 14);
+    this.pointLight = new THREE.PointLight(0x00f0ff, 2.8, 14);
     coreContainer.add(this.pointLight);
 
     this.root.add(coreContainer);
@@ -158,8 +145,8 @@ export class JarvisCore {
 
     // Inner wireframe calibration ring
     const wire1 = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.RingGeometry(r1Radius - 0.08, r1Radius + 0.08, 48)),
-      new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.4 })
+      new THREE.WireframeGeometry(new THREE.TorusGeometry(r1Radius, 0.015, 8, 48)),
+      this.cyanEmissiveMat
     );
     this.ringInnerGroup.add(wire1);
     this.root.add(this.ringInnerGroup);
@@ -170,28 +157,25 @@ export class JarvisCore {
     this.ringMiddleGroup = new THREE.Group();
     this.ringMiddleGroup.name = 'Middle Gimbal Ring';
 
-    const r2Radius = 1.62;
-    const r2Tube = 0.055;
-    const r2Geo = new THREE.TorusGeometry(r2Radius, r2Tube, 24, 80);
-    const r2Mesh = new THREE.Mesh(r2Geo, this.silverMetalMat.clone());
+    const r2Radius = 1.55;
+    const r2Tube = 0.04;
+    const r2Geo = new THREE.TorusGeometry(r2Radius, r2Tube, 24, 72);
+    const r2Mesh = new THREE.Mesh(r2Geo, this.graphiteMat);
     this.ringMiddleGroup.add(r2Mesh);
 
-    // 12 Radial Measurement Notches around circumference
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2;
-      const notchGeo = new THREE.BoxGeometry(0.04, 0.09, 0.06);
-      const notch = new THREE.Mesh(notchGeo, this.graphiteMat);
-      notch.position.set(Math.cos(angle) * r2Radius, Math.sin(angle) * r2Radius, 0);
-      notch.rotation.z = angle;
-      this.ringMiddleGroup.add(notch);
+    // Vertical pivot nodes
+    [-r2Radius, r2Radius].forEach(y => {
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), this.iceBlueMat);
+      node.position.set(0, y, 0);
+      this.ringMiddleGroup.add(node);
+    });
 
-      // Glowing pip on every 90 degrees
-      if (i % 3 === 0) {
-        const pip = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 12), this.cyanEmissiveMat);
-        pip.position.set(Math.cos(angle) * (r2Radius + 0.1), Math.sin(angle) * (r2Radius + 0.1), 0);
-        this.ringMiddleGroup.add(pip);
-      }
-    }
+    // Concentric thin cyan ring
+    const wire2 = new THREE.LineSegments(
+      new THREE.WireframeGeometry(new THREE.TorusGeometry(r2Radius, 0.012, 8, 48)),
+      this.cyanEmissiveMat
+    );
+    this.ringMiddleGroup.add(wire2);
     this.root.add(this.ringMiddleGroup);
 
     // ==========================================
@@ -200,176 +184,29 @@ export class JarvisCore {
     this.ringOuterGroup = new THREE.Group();
     this.ringOuterGroup.name = 'Outer Gimbal Ring';
 
-    const r3Radius = 2.18;
-    const r3Tube = 0.065;
+    const r3Radius = 1.95;
+    const r3Tube = 0.035;
     const r3Geo = new THREE.TorusGeometry(r3Radius, r3Tube, 24, 96);
-    const r3Mesh = new THREE.Mesh(r3Geo, this.silverMetalMat.clone());
+    const r3Mesh = new THREE.Mesh(r3Geo, this.silverMetalMat);
     this.ringOuterGroup.add(r3Mesh);
 
-    // Thin segmented perimeter brackets
-    const bracketGeo = new THREE.RingGeometry(r3Radius + 0.12, r3Radius + 0.18, 4, 1, 0.15, 1.25);
-    const bracketMat = new THREE.MeshBasicMaterial({
-      color: 0x94a3b8,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.65
-    });
-    for (let i = 0; i < 4; i++) {
-      const bMesh = new THREE.Mesh(bracketGeo, bracketMat);
-      bMesh.rotation.z = (i * Math.PI) / 2;
-      this.ringOuterGroup.add(bMesh);
-    }
+    // Exterior framing Torus ring
+    const frameGeo = new THREE.TorusGeometry(r3Radius + 0.15, 0.018, 16, 96);
+    const frameMesh = new THREE.Mesh(frameGeo, this.iceBlueMat);
+    this.ringOuterGroup.add(frameMesh);
+
     this.root.add(this.ringOuterGroup);
-
-    // ==========================================
-    // RING 4: Tilted Planetary Orbital Ring
-    // ==========================================
-    const r4Radius = 2.75;
-    const r4Curve = new THREE.EllipseCurve(0, 0, r4Radius, r4Radius * 0.92, 0, Math.PI * 2, false, 0);
-    const r4Points = r4Curve.getPoints(80);
-    const r4Geo = new THREE.BufferGeometry().setFromPoints(r4Points);
-    const r4Line = new THREE.Line(r4Geo, new THREE.LineBasicMaterial({
-      color: 0x00f0ff,
-      transparent: true,
-      opacity: 0.35
-    }));
-    r4Line.rotation.x = Math.PI / 3.2;
-    r4Line.rotation.y = Math.PI / 6;
-    this.root.add(r4Line);
-  }
-
-  _buildOrbitingSwarm() {
-    // 240 micro energy particle sparks on 3 orbital bands
-    const count = 240;
-    this.swarmPositions = new Float32Array(count * 3);
-    this.swarmAngles = new Float32Array(count);
-    this.swarmRadii = new Float32Array(count);
-    this.swarmInclinations = new Float32Array(count);
-    this.swarmSpeeds = new Float32Array(count);
-
-    for (let i = 0; i < count; i++) {
-      this.swarmAngles[i] = Math.random() * Math.PI * 2;
-      // Band distribution around 1.3 to 2.4 radius
-      this.swarmRadii[i] = 1.35 + Math.random() * 1.15;
-      this.swarmInclinations[i] = (Math.random() - 0.5) * Math.PI * 0.75;
-      this.swarmSpeeds[i] = (0.5 + Math.random() * 0.9) * (Math.random() > 0.5 ? 1 : -1);
-
-      this.swarmPositions[i * 3] = 0;
-      this.swarmPositions[i * 3 + 1] = 0;
-      this.swarmPositions[i * 3 + 2] = 0;
-    }
-
-    const swarmGeo = new THREE.BufferGeometry();
-    swarmGeo.setAttribute('position', new THREE.BufferAttribute(this.swarmPositions, 3));
-
-    // Circular glowing particle texture
-    const sparkCanvas = document.createElement('canvas');
-    sparkCanvas.width = 32;
-    sparkCanvas.height = 32;
-    const ctx = sparkCanvas.getContext('2d');
-    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    grad.addColorStop(0.3, 'rgba(0, 240, 255, 0.9)');
-    grad.addColorStop(0.7, 'rgba(0, 245, 155, 0.3)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 32, 32);
-
-    const sparkTex = new THREE.CanvasTexture(sparkCanvas);
-    sparkTex.generateMipmaps = false;
-
-    const swarmMat = new THREE.PointsMaterial({
-      size: 0.085,
-      map: sparkTex,
-      transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
-    this.swarm = new THREE.Points(swarmGeo, swarmMat);
-    this.root.add(this.swarm);
-  }
-
-  _buildRadialHUDMarkings() {
-    // Holographic Dial Ring on Z plane
-    const dialRadius = 1.9;
-    const dialCanvas = document.createElement('canvas');
-    dialCanvas.width = 512;
-    dialCanvas.height = 512;
-    const ctx = dialCanvas.getContext('2d');
-
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.65)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(256, 256, 240, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 72 Tick marks with numbers at cardinal points
-    ctx.fillStyle = '#00f0ff';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (let i = 0; i < 72; i++) {
-      const angle = (i / 72) * Math.PI * 2;
-      const isMajor = i % 18 === 0;
-      const isMed = i % 6 === 0;
-      const rInner = isMajor ? 215 : (isMed ? 225 : 232);
-
-      const x1 = 256 + Math.cos(angle) * rInner;
-      const y1 = 256 + Math.sin(angle) * rInner;
-      const x2 = 256 + Math.cos(angle) * 240;
-      const y2 = 256 + Math.sin(angle) * 240;
-
-      ctx.beginPath();
-      ctx.lineWidth = isMajor ? 3 : 1.5;
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-
-      if (isMajor) {
-        const deg = (i / 72) * 360;
-        const textR = 195;
-        const tx = 256 + Math.cos(angle) * textR;
-        const ty = 256 + Math.sin(angle) * textR;
-        ctx.fillText(`${deg.toString().padStart(3, '0')}°`, tx, ty);
-      }
-    }
-
-    const dialTex = new THREE.CanvasTexture(dialCanvas);
-    dialTex.generateMipmaps = false;
-
-    const dialGeo = new THREE.PlaneGeometry(dialRadius * 2, dialRadius * 2);
-    const dialMat = new THREE.MeshBasicMaterial({
-      map: dialTex,
-      transparent: true,
-      opacity: 0.42,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-    const dialMesh = new THREE.Mesh(dialGeo, dialMat);
-    dialMesh.position.set(0, 0, -0.05);
-    this.root.add(dialMesh);
-    this.dialMesh = dialMesh;
   }
 
   // =========================================================================
   // GESTURE COMMAND HOOKS
   // =========================================================================
 
-  /**
-   * Open Palm: Triggers radial energy pulse expanding outward through all rings
-   */
   triggerEnergyPulse() {
     this.isPulseActive = true;
     this.pulseTimer = 0.5;
   }
 
-  /**
-   * Fist: Freeze mechanical rotation and lock orientation
-   */
   setFrozen(freeze = true) {
     this.isFrozen = freeze;
     if (this.energySphere) {
@@ -381,9 +218,6 @@ export class JarvisCore {
     }
   }
 
-  /**
-   * Set Grabbed State (Hand is manipulating the core directly)
-   */
   setGrabbed(grabbed = true) {
     this.isGrabbed = grabbed;
     if (this.silverMetalMat) {
@@ -393,22 +227,21 @@ export class JarvisCore {
   }
 
   // =========================================================================
-  // ANIMATION TICK (Called inside single authoritative Three.js loop)
+  // ANIMATION TICK (Called inside authoritative Three.js loop)
   // =========================================================================
 
   update(dt, elapsed) {
-    const clampedDt = Math.max(0.001, Math.min(0.05, dt));
+    const clampedDt = Math.max(0.001, Math.min(0.033, dt));
 
     // 1. Central Energy Sphere Organic Breathing
     if (this.energySphere && this.energyAtmosphere) {
-      const breath = 1.0 + Math.sin(elapsed * 3.2) * 0.08;
+      const breath = 1.0 + Math.sin(elapsed * 2.8) * 0.06;
       let finalScale = breath;
 
-      // Handle Open Palm Energy Pulse shockwave
       if (this.isPulseActive) {
         this.pulseTimer -= clampedDt;
         const progress = 1.0 - (this.pulseTimer / 0.5);
-        finalScale += Math.sin(progress * Math.PI) * 0.45;
+        finalScale += Math.sin(progress * Math.PI) * 0.35;
 
         if (this.pulseTimer <= 0) {
           this.isPulseActive = false;
@@ -420,57 +253,72 @@ export class JarvisCore {
       this.energyAtmosphere.scale.set(atmoScale, atmoScale, atmoScale);
     }
 
-    // 2. Continuous Mechanical Gyroscope Rotation (Hierarchy of Motion)
+    // 2. Continuous Mechanical Gyroscope Multi-Axis Rotation
     if (!this.isFrozen) {
-      // Ring 1 rotates continuously around local X
       if (this.ringInnerGroup) {
         this.ringInnerGroup.rotation.x += clampedDt * this.innerSpeedX;
       }
-
-      // Ring 2 rotates counter-directionally around local Y
       if (this.ringMiddleGroup) {
         this.ringMiddleGroup.rotation.y += clampedDt * this.middleSpeedY;
       }
-
-      // Ring 3 rotates slowly around local Z
       if (this.ringOuterGroup) {
         this.ringOuterGroup.rotation.z += clampedDt * this.outerSpeedZ;
       }
-
-      // Dial HUD slow rotation
-      if (this.dialMesh) {
-        this.dialMesh.rotation.z -= clampedDt * 0.05;
-      }
     }
 
-    // 3. Orbiting Spark Swarm Trajectory Update
-    if (this.swarm && this.swarmPositions && !this.isFrozen) {
-      const pos = this.swarmPositions;
-      const count = this.swarmAngles.length;
-
-      for (let i = 0; i < count; i++) {
-        this.swarmAngles[i] += clampedDt * this.swarmSpeeds[i];
-        const a = this.swarmAngles[i];
-        const r = this.swarmRadii[i];
-        const inc = this.swarmInclinations[i];
-
-        const idx = i * 3;
-        pos[idx] = Math.cos(a) * r;
-        pos[idx + 1] = Math.sin(a) * Math.sin(inc) * r;
-        pos[idx + 2] = Math.sin(a) * Math.cos(inc) * r;
-      }
-      this.swarm.geometry.attributes.position.needsUpdate = true;
-    }
-
-    // 4. Subtle Base Root Float (Idle cosmetic motion when not grabbed)
+    // 3. Subtle floating hover when resting
     if (!this.isGrabbed) {
-      this.root.position.y = 0.25 + Math.sin(elapsed * 1.2) * 0.04;
+      this.root.position.y = 0.25 + Math.sin(elapsed * 1.2) * 0.03;
+    }
+  }
+
+  // =========================================================================
+  // CINEMATIC TRANSITION SEQUENCE (Intro -> Workspace, 100% Smooth Easing)
+  // =========================================================================
+
+  animateTransitionOut(progress, dt) {
+    const p = Math.max(0.0, Math.min(1.0, progress));
+    const clampedDt = Math.max(0.001, Math.min(0.033, dt));
+
+    // Smooth rotational speed-up
+    const speedMult = 1.0 + 3.0 * p * p;
+    if (this.ringInnerGroup) this.ringInnerGroup.rotation.x += clampedDt * this.innerSpeedX * speedMult;
+    if (this.ringMiddleGroup) this.ringMiddleGroup.rotation.y += clampedDt * this.middleSpeedY * speedMult;
+    if (this.ringOuterGroup) this.ringOuterGroup.rotation.z += clampedDt * this.outerSpeedZ * speedMult;
+
+    // Mathematical cosine easing: 1.0 down to 0.0 with 0 velocity at start
+    const easeScale = Math.cos(p * Math.PI * 0.5);
+    this.root.scale.set(easeScale, easeScale, easeScale);
+
+    if (this.pointLight) {
+      this.pointLight.intensity = 2.8 * easeScale;
+    }
+
+    if (p >= 1.0) {
+      this.root.visible = false;
+    }
+  }
+
+  resetIntro() {
+    this.root.visible = true;
+    this.root.scale.set(1, 1, 1);
+    this.root.position.set(0, 0.25, 0);
+    this.isFrozen = false;
+    this.isGrabbed = false;
+    if (this.pointLight) {
+      this.pointLight.intensity = 2.8;
+      this.pointLight.color.setHex(0x00f0ff);
+    }
+    if (this.energySphere) {
+      this.energySphere.scale.set(1, 1, 1);
+    }
+    if (this.energyAtmosphere) {
+      this.energyAtmosphere.scale.set(1.25, 1.25, 1.25);
     }
   }
 
   dispose() {
     this.scene.remove(this.root);
-    // Dispose materials
     [this.silverMetalMat, this.graphiteMat, this.cyanEmissiveMat, this.iceBlueMat].forEach(m => m.dispose());
   }
 }

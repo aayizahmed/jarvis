@@ -1,26 +1,27 @@
 /**
- * GestureFlow — Cinematic JARVIS Three.js Scene Manager
- * Dominates the visual field with near-black and charcoal backgrounds,
- * brushed silver/chrome materials, radiant electric-cyan highlights,
- * central holographic mechanism (40-55% viewport), and functional 3D inventory.
+ * GestureFlow — Three.js Scene Manager
+ * Ultra-smooth, zero-GC 60+ FPS spatial manipulation environment hosting:
+ * 1. Arc Reactor Sphere
+ * 2. Holographic Ring
+ * 3. Torus Accelerator
+ * Plus the Cinematic Opening Holographic Gyroscope Core
  */
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { JarvisCore } from './jarvisCore.js';
-import { InventoryManager } from './inventoryManager.js';
-import { EnergyBeamRenderer } from './energyBeamRenderer.js';
 
-export const INTERACTION_MODES = {
-  CORE_GIMBAL: 'CORE_GIMBAL',
-  OBJECT_MANIPULATE: 'OBJECT_MANIPULATE'
+export const APP_STATES = {
+  INTRO: 'INTRO',
+  TRANSITIONING: 'TRANSITIONING',
+  WORKSPACE: 'WORKSPACE'
 };
 
 export class SceneManager {
   constructor(canvasContainer) {
     this.container = canvasContainer;
-    this.width = canvasContainer.clientWidth || window.innerWidth || 1280;
-    this.height = canvasContainer.clientHeight || window.innerHeight || 800;
+    this.width = canvasContainer.clientWidth || 800;
+    this.height = canvasContainer.clientHeight || 600;
 
     // Core Three.js components
     this.scene = null;
@@ -28,35 +29,52 @@ export class SceneManager {
     this.renderer = null;
     this.controls = null;
 
-    // Pre-allocated Zero-GC Math Scratchpad
+    // State Management
+    this.appState = APP_STATES.INTRO;
+    this.transitionDuration = 0.75; // 750ms fluid transition
+    this.transitionElapsed = 0;
+    this.onTransitionComplete = null;
+
+    // Camera Navigation Positions
+    this.introCameraPos = new THREE.Vector3(0, 0, 7.8);
+    this.introCameraLookAt = new THREE.Vector3(0, 0, 0);
+    this.workspaceCameraPos = new THREE.Vector3(0, 1.6, 7.0);
+    this.workspaceCameraLookAt = new THREE.Vector3(0, 0.2, 0);
+
+    // Camera Lerp Target
+    this.targetCameraPos = this.introCameraPos.clone();
+    this.targetCameraLookAt = this.introCameraLookAt.clone();
+
+    // Zero-GC Math Scratchpad
     this._v1 = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
     this._q1 = new THREE.Quaternion();
     this._m1 = new THREE.Matrix4();
 
-    // Active Interaction Mode
-    this.interactionMode = INTERACTION_MODES.CORE_GIMBAL;
-
-    // Interactive Meshes List for Raycasting
+    // Interactive 3D Objects
     this.interactiveObjects = [];
+    this.ring = null;
+    this.sphere = null;
+    this.torus = null;
+
+    // Floor Target Rings & Environment
+    this.floorRings = [];
+    this.particles = null;
+
+    // Cinematic Intro Core
+    this.introCore = null;
 
     // Initial state storage for instant scene reset
     this.initialTransforms = new Map();
 
-    // JARVIS Holographic Reticle / Cursor
+    // Virtual 3D Reticle
     this.virtualCursor3D = null;
-    this.reticleOuter = null;
     this.reticleInner = null;
+    this.reticleOuter = null;
 
-    // Object targeting states
+    // Selection States
     this.hoveredObject = null;
     this.selectedObject = null;
-
-    // Sub-Systems
-    this.jarvisCore = null;
-    this.inventory = null;
-    this.energyBeam = null;
-    this.particles = null;
 
     this.clock = new THREE.Clock();
 
@@ -64,18 +82,18 @@ export class SceneManager {
   }
 
   _init() {
-    // 1. Scene with Deep Obsidian Black & Atmospheric Fog
+    // 1. Scene with Deep Obsidian Space & Depth Fog
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x040609);
-    this.scene.fog = new THREE.FogExp2(0x040609, 0.038);
+    this.scene.background = new THREE.Color(0x04060a);
+    this.scene.fog = new THREE.FogExp2(0x04060a, 0.035);
 
-    // 2. Camera Setup (Optimized for full-screen cinematic perspective)
+    // 2. Camera Setup
     const aspect = this.width / this.height;
     this.camera = new THREE.PerspectiveCamera(46, aspect, 0.1, 100);
-    this.camera.position.set(0, 1.4, 6.2);
-    this.camera.lookAt(0, 0.25, 0);
+    this.camera.position.copy(this.introCameraPos);
+    this.camera.lookAt(this.introCameraLookAt);
 
-    // 3. WebGL Renderer with High-Performance Tone Mapping
+    // 3. WebGL Renderer
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
@@ -87,120 +105,106 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    this.renderer.toneMappingExposure = 1.15;
     this.container.appendChild(this.renderer.domElement);
 
     // 4. OrbitControls (Mouse Fallback)
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.06;
-    this.controls.maxPolarAngle = Math.PI / 2 + 0.05;
-    this.controls.minDistance = 2.8;
-    this.controls.maxDistance = 22;
-    this.controls.target.set(0, 0.25, 0);
+    this.controls.maxPolarAngle = Math.PI / 2 + 0.04;
+    this.controls.minDistance = 3.0;
+    this.controls.maxDistance = 20;
+    this.controls.target.copy(this.introCameraLookAt);
+    this.controls.enabled = false;
 
-    // 5. Lighting Environment (Brushed Silver Specular Highlights)
+    // 5. Lighting Environment
     this._setupLighting();
 
-    // 6. Cybernetic Floor Grid & Ambient Particles
+    // 6. Cybernetic Floor Grid & Target Rings
     this._setupEnvironment();
 
-    // 7. Centerpiece: Real-time JARVIS Holographic Mechanism (40-55% Viewport)
-    this.jarvisCore = new JarvisCore(this.scene);
-    this.interactiveObjects.push(this.jarvisCore.root);
-    this.selectedObject = this.jarvisCore.root;
+    // 7. Interactive 3D Objects (Sphere, Ring, Torus)
+    this._createInteractiveObjects();
 
-    // 8. 3D Inventory System
-    this.inventory = new InventoryManager(this);
+    // 8. Holographic Gyroscope Core for Cinematic Intro
+    this.introCore = new JarvisCore(this.scene);
 
-    // Spawn 2 initial showcase entities flanking the central core
-    const initCube = this.inventory.spawnEntity('cube', new THREE.Vector3(-3.2, 0.35, -0.5));
-    const initSphere = this.inventory.spawnEntity('sphere', new THREE.Vector3(3.2, 0.35, -0.5));
-
-    // 9. Holographic Energy Tether Beam
-    this.energyBeam = new EnergyBeamRenderer(this.scene);
-
-    // 10. JARVIS 3D Target Reticle
+    // 9. JARVIS 3D Target Reticle
     this._createJarvisReticle();
 
-    // 11. Window Resize Listener
+    // 10. Window resize listener
     window.addEventListener('resize', () => this.resize());
   }
 
   _setupLighting() {
-    // Ambient fill
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     this.scene.add(ambientLight);
 
-    // Key Directional Light for brushed metallic chrome reflections
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
-    keyLight.position.set(5.0, 9.0, 6.0);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    keyLight.position.set(4.5, 8.5, 5.5);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
     keyLight.shadow.camera.near = 1.0;
-    keyLight.shadow.camera.far = 25;
-    keyLight.shadow.camera.left = -6.5;
-    keyLight.shadow.camera.right = 6.5;
-    keyLight.shadow.camera.top = 6.5;
-    keyLight.shadow.camera.bottom = -6.5;
-    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.camera.far = 20;
+    keyLight.shadow.bias = -0.0006;
     this.scene.add(keyLight);
 
-    // Electric Cyan Tactical Fill Light (Left)
-    const fillLightCyan = new THREE.PointLight(0x00f0ff, 3.2, 18);
-    fillLightCyan.position.set(-6.0, 3.5, 3.2);
+    const fillLightCyan = new THREE.PointLight(0x00f0ff, 2.6, 14);
+    fillLightCyan.position.set(-5, 2.8, 2.5);
     this.scene.add(fillLightCyan);
 
-    // Emerald Green Accent Light (Right)
-    const fillLightEmerald = new THREE.PointLight(0x00f59b, 2.8, 18);
-    fillLightEmerald.position.set(6.0, 3.5, 3.2);
+    const fillLightEmerald = new THREE.PointLight(0x00f59b, 2.2, 14);
+    fillLightEmerald.position.set(5, 2.8, 2.5);
     this.scene.add(fillLightEmerald);
 
-    // Ice-Blue Rear Rim Light
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.4);
-    rimLight.position.set(0, 5, -8);
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.0);
+    rimLight.position.set(0, 5, -7);
     this.scene.add(rimLight);
   }
 
   _setupEnvironment() {
     // Shadow Receiver Ground Plane
-    const groundGeo = new THREE.PlaneGeometry(36, 36);
-    const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+    const groundGeo = new THREE.PlaneGeometry(32, 32);
+    const groundMat = new THREE.ShadowMaterial({ opacity: 0.38 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -1.35;
+    ground.position.y = -1.25;
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    // Fine Technical Perspective Grid
+    // Cybernetic Floor Grid
     const gridHelper = new THREE.GridHelper(26, 34, 0x00f0ff, 0x111c2e);
-    gridHelper.position.y = -1.34;
+    gridHelper.position.y = -1.24;
     gridHelper.material.opacity = 0.22;
     gridHelper.material.transparent = true;
     this.scene.add(gridHelper);
 
-    // Radial Concentric Floor HUD Circles
-    [1.8, 3.6, 5.4].forEach(r => {
-      const ringGeo = new THREE.RingGeometry(r - 0.02, r + 0.02, 64);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: 0x00f0ff,
-        transparent: true,
-        opacity: 0.16,
-        side: THREE.DoubleSide
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = -1.33;
-      this.scene.add(ring);
+    // Holographic Polar Target Rings on Floor at X: -2.8, 0, 2.8
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide
     });
 
-    // Ambient Floating Cosmic Dust
-    const particleCount = 150;
+    [-2.8, 0, 2.8].forEach(x => {
+      const ringGeo = new THREE.RingGeometry(0.8, 0.84, 48);
+      const ring = new THREE.Mesh(ringGeo, ringMat.clone());
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(x, -1.23, 0);
+      ring.visible = false;
+      this.scene.add(ring);
+      this.floorRings.push(ring);
+    });
+
+    // Ambient floating dust particles
+    const particleCount = 120;
     const posArray = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount * 3; i += 3) {
       posArray[i] = (Math.random() - 0.5) * 16;
-      posArray[i + 1] = Math.random() * 6 - 1;
+      posArray[i + 1] = Math.random() * 5 - 1;
       posArray[i + 2] = (Math.random() - 0.5) * 12;
     }
 
@@ -210,23 +214,122 @@ export class SceneManager {
       size: 0.04,
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.35,
       blending: THREE.AdditiveBlending
     });
     this.particles = new THREE.Points(particleGeo, particleMat);
     this.scene.add(this.particles);
   }
 
+  _createInteractiveObjects() {
+    // 1. Holographic Ring (Luminous Electric Cyan Ring)
+    const ringGeo = new THREE.TorusGeometry(1.0, 0.08, 24, 64);
+    const ringMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0284c7,
+      emissive: 0x000000,
+      metalness: 0.9,
+      roughness: 0.15,
+      clearcoat: 0.8
+    });
+    this.ring = new THREE.Mesh(ringGeo, ringMat);
+    this.ring.name = 'Holographic Ring';
+    this.ring.position.set(-2.8, 0.35, 0);
+    this.ring.castShadow = true;
+    this.ring.receiveShadow = true;
+    this.ring.userData = {
+      defaultColor: 0x0284c7,
+      accentColor: 0x00f0ff,
+      baseScale: new THREE.Vector3(1, 1, 1)
+    };
+
+    // Inner wireframe glow
+    const ringWire = new THREE.LineSegments(
+      new THREE.WireframeGeometry(new THREE.TorusGeometry(1.0, 0.02, 8, 48)),
+      new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.4 })
+    );
+    this.ring.add(ringWire);
+    this.ring.visible = false;
+    this.scene.add(this.ring);
+    this.interactiveObjects.push(this.ring);
+
+    // 2. Arc Reactor Sphere (Translucent Emerald Physical Sphere)
+    const sphereGeo = new THREE.SphereGeometry(1.0, 48, 48);
+    const sphereMat = new THREE.MeshPhysicalMaterial({
+      color: 0x064e3b,
+      emissive: 0x000000,
+      metalness: 0.25,
+      roughness: 0.12,
+      transmission: 0.35,
+      thickness: 1.1,
+      ior: 1.45,
+      clearcoat: 0.8
+    });
+    this.sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    this.sphere.name = 'Arc Reactor Sphere';
+    this.sphere.position.set(0, 0.35, 0);
+    this.sphere.castShadow = true;
+    this.sphere.receiveShadow = true;
+    this.sphere.userData = {
+      defaultColor: 0x064e3b,
+      accentColor: 0x00f59b,
+      baseScale: new THREE.Vector3(1, 1, 1)
+    };
+
+    // Inner Glowing Core
+    const coreGeo = new THREE.SphereGeometry(0.35, 24, 24);
+    const coreMat = new THREE.MeshBasicMaterial({
+      color: 0x00f59b,
+      transparent: true,
+      opacity: 0.75
+    });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    this.sphere.add(core);
+    this.sphere.visible = false;
+    this.scene.add(this.sphere);
+    this.interactiveObjects.push(this.sphere);
+
+    // 3. Torus Accelerator (Titanium Cyan Specular Torus)
+    const torusGeo = new THREE.TorusGeometry(0.85, 0.3, 24, 48);
+    const torusMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0369a1,
+      emissive: 0x000000,
+      metalness: 0.85,
+      roughness: 0.18,
+      clearcoat: 0.6
+    });
+    this.torus = new THREE.Mesh(torusGeo, torusMat);
+    this.torus.name = 'Torus Accelerator';
+    this.torus.position.set(2.8, 0.35, 0);
+    this.torus.castShadow = true;
+    this.torus.receiveShadow = true;
+    this.torus.userData = {
+      defaultColor: 0x0369a1,
+      accentColor: 0x38bdf8,
+      baseScale: new THREE.Vector3(1, 1, 1)
+    };
+    this.torus.visible = false;
+    this.scene.add(this.torus);
+    this.interactiveObjects.push(this.torus);
+
+    // Cache initial transforms for clean scene reset
+    this.interactiveObjects.forEach(obj => {
+      this.initialTransforms.set(obj.uuid, {
+        position: obj.position.clone(),
+        rotation: obj.rotation.clone(),
+        scale: obj.scale.clone()
+      });
+    });
+
+    this.setSelectedObject(this.sphere, false);
+  }
+
   _createJarvisReticle() {
     this.virtualCursor3D = new THREE.Group();
 
-    // Central aiming dot
     const dotGeo = new THREE.SphereGeometry(0.065, 16, 16);
     const dotMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const dot = new THREE.Mesh(dotGeo, dotMat);
-    this.virtualCursor3D.add(dot);
+    this.virtualCursor3D.add(new THREE.Mesh(dotGeo, dotMat));
 
-    // Inner Targeting Ring
     const innerRingGeo = new THREE.RingGeometry(0.14, 0.17, 32);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
@@ -237,7 +340,6 @@ export class SceneManager {
     this.reticleInner = new THREE.Mesh(innerRingGeo, ringMat);
     this.virtualCursor3D.add(this.reticleInner);
 
-    // Outer Segmented Brackets
     const outerRingGeo = new THREE.RingGeometry(0.24, 0.27, 4, 1, 0.2, 1.1);
     this.reticleOuter = new THREE.Group();
     for (let i = 0; i < 4; i++) {
@@ -247,71 +349,13 @@ export class SceneManager {
     }
     this.virtualCursor3D.add(this.reticleOuter);
 
-    this.virtualCursor3D.position.set(0, 0.35, 2);
     this.virtualCursor3D.visible = false;
     this.scene.add(this.virtualCursor3D);
   }
 
   // =========================================================================
-  // INTERACTION MODES & TARGETING
+  // SELECTION & VISUAL STATES
   // =========================================================================
-
-  setInteractionMode(mode) {
-    this.interactionMode = mode;
-    if (mode === INTERACTION_MODES.CORE_GIMBAL) {
-      this.setSelectedObject(this.jarvisCore.root, false);
-    }
-  }
-
-  updateCursor(worldPoint, state = 'HOVER') {
-    if (!worldPoint) {
-      this.virtualCursor3D.visible = false;
-      this.energyBeam.hide();
-      return;
-    }
-
-    this.virtualCursor3D.visible = true;
-    this.virtualCursor3D.position.copy(worldPoint);
-    this.virtualCursor3D.quaternion.copy(this.camera.quaternion);
-
-    const innerMat = this.reticleInner.material;
-    if (state === 'GRABBING' || state === 'GRAB' || state === 'DRAGGING') {
-      innerMat.color.setHex(0x00f59b); // Emerald
-      this.virtualCursor3D.scale.set(1.25, 1.25, 1.25);
-
-      // Active energy tether from cursor to held object
-      if (this.selectedObject) {
-        this.energyBeam.update(worldPoint, this.selectedObject.position, this.clock.getElapsedTime());
-      }
-    } else if (state === 'SCALING') {
-      innerMat.color.setHex(0xffb800); // Gold
-      this.virtualCursor3D.scale.set(1.4, 1.4, 1.4);
-      if (this.selectedObject) {
-        this.energyBeam.update(worldPoint, this.selectedObject.position, this.clock.getElapsedTime());
-      }
-    } else if (state === 'FROZEN') {
-      innerMat.color.setHex(0xa855f7); // Violet
-      this.virtualCursor3D.scale.set(1.0, 1.0, 1.0);
-      this.energyBeam.hide();
-    } else {
-      innerMat.color.setHex(0x00f0ff); // Ice Cyan
-      this.virtualCursor3D.scale.set(1.0, 1.0, 1.0);
-      this.energyBeam.hide();
-    }
-  }
-
-  setHoveredObject(obj) {
-    if (this.hoveredObject === obj) return;
-
-    if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
-      this._applyVisualState(this.hoveredObject, 'DEFAULT');
-    }
-
-    this.hoveredObject = obj;
-    if (this.hoveredObject && this.hoveredObject !== this.selectedObject) {
-      this._applyVisualState(this.hoveredObject, 'HOVERED');
-    }
-  }
 
   setSelectedObject(obj, isGrabbed = false) {
     if (this.selectedObject && this.selectedObject !== obj) {
@@ -319,14 +363,19 @@ export class SceneManager {
     }
 
     this.selectedObject = obj;
-    if (this.selectedObject) {
-      this._applyVisualState(this.selectedObject, isGrabbed ? 'GRABBED' : 'HOVERED');
+    if (obj) {
+      this._applyVisualState(obj, isGrabbed ? 'GRABBED' : 'HOVERED');
+    }
+  }
+
+  setHoveredObject(obj) {
+    if (this.hoveredObject && this.hoveredObject !== obj && this.hoveredObject !== this.selectedObject) {
+      this._applyVisualState(this.hoveredObject, 'DEFAULT');
     }
 
-    // Inform central core if it was grabbed
-    if (this.jarvisCore) {
-      const isCore = obj === this.jarvisCore.root;
-      this.jarvisCore.setGrabbed(isCore && isGrabbed);
+    this.hoveredObject = obj;
+    if (obj && obj !== this.selectedObject) {
+      this._applyVisualState(obj, 'HOVERED');
     }
   }
 
@@ -343,7 +392,7 @@ export class SceneManager {
           m.material.emissiveIntensity = 0.38;
         } else {
           m.material.emissive.setHex(0x000000);
-          m.material.emissiveIntensity = 0.1;
+          m.material.emissiveIntensity = 0;
         }
       }
     };
@@ -358,58 +407,151 @@ export class SceneManager {
   }
 
   resetScene() {
-    // Reset central core
-    if (this.jarvisCore) {
-      this.jarvisCore.root.position.set(0, 0, 0);
-      this.jarvisCore.root.rotation.set(0, 0, 0);
-      this.jarvisCore.root.scale.set(1, 1, 1);
-    }
+    this.interactiveObjects.forEach(obj => {
+      const init = this.initialTransforms.get(obj.uuid);
+      if (init) {
+        obj.position.copy(init.position);
+        obj.rotation.copy(init.rotation);
+        obj.scale.copy(init.scale);
+      }
+      this._applyVisualState(obj, 'DEFAULT');
+    });
 
-    // Reset camera
-    this.controls.target.set(0, 0.25, 0);
-    this.camera.position.set(0, 1.4, 6.2);
+    this.setSelectedObject(this.sphere, false);
+    this.controls.target.set(0, 0.2, 0);
+    this.camera.position.set(0, 1.6, 7.0);
     this.controls.update();
-
-    this.hoveredObject = null;
-    this.setSelectedObject(this.jarvisCore.root, false);
-    this.energyBeam.hide();
   }
 
   // =========================================================================
-  // MAIN RENDER LOOP (60+ FPS decoupled)
+  // APPLICATION STATE TRANSITIONS (INTRO <-> WORKSPACE)
+  // =========================================================================
+
+  startWorkspaceTransition(onComplete) {
+    if (this.appState !== APP_STATES.INTRO) return;
+    this.appState = APP_STATES.TRANSITIONING;
+    this.transitionElapsed = 0;
+    this.onTransitionComplete = onComplete;
+
+    // Reveal workspace objects scaled to 0 initially
+    this.interactiveObjects.forEach(obj => {
+      obj.visible = true;
+      obj.scale.set(0.001, 0.001, 0.001);
+    });
+    this.floorRings.forEach(r => { r.visible = true; });
+  }
+
+  returnToIntro(onComplete) {
+    this.appState = APP_STATES.INTRO;
+    if (this.introCore) {
+      this.introCore.resetIntro();
+    }
+
+    this.interactiveObjects.forEach(obj => { obj.visible = false; });
+    this.floorRings.forEach(r => { r.visible = false; });
+
+    this.camera.position.copy(this.introCameraPos);
+    this.camera.lookAt(this.introCameraLookAt);
+    this.controls.target.copy(this.introCameraLookAt);
+    this.controls.enabled = false;
+
+    if (onComplete) onComplete();
+  }
+
+  // =========================================================================
+  // MAIN RENDER LOOP (Decoupled 60+ FPS, Zero-GC)
   // =========================================================================
 
   render() {
     const elapsed = this.clock.getElapsedTime();
-    const dt = Math.max(0.001, Math.min(0.05, this.clock.getDelta() || 0.016));
+    const dt = Math.max(0.001, Math.min(0.033, this.clock.getDelta() || 0.016));
 
-    // 1. Update Central Holographic Core
-    if (this.jarvisCore) {
-      this.jarvisCore.update(dt, elapsed);
+    // 1. INTRO State
+    if (this.appState === APP_STATES.INTRO) {
+      if (this.introCore) {
+        this.introCore.update(dt, elapsed);
+      }
+      if (this.particles) {
+        this.particles.rotation.y = elapsed * 0.012;
+      }
+      this.renderer.render(this.scene, this.camera);
+      return;
     }
 
-    // 2. Idle float animation for ungrabbed spawned inventory entities
-    if (this.inventory && this.inventory.spawnedEntities) {
-      this.inventory.spawnedEntities.forEach((ent, idx) => {
-        if (ent !== this.selectedObject) {
-          ent.position.y += Math.sin(elapsed * 1.5 + idx * 2.0) * 0.0012;
-          ent.rotation.y += 0.0035;
+    // 2. TRANSITIONING State (Hermite smoothstep camera glide & core dissolve)
+    if (this.appState === APP_STATES.TRANSITIONING) {
+      this.transitionElapsed += dt;
+      const progress = Math.min(1.0, this.transitionElapsed / this.transitionDuration);
+
+      // Hermite smoothstep interpolation (0 -> 1 with zero derivatives at endpoints)
+      const smoothP = progress * progress * (3 - 2 * progress);
+      this.camera.position.lerpVectors(this.introCameraPos, this.workspaceCameraPos, smoothP);
+      this.controls.target.lerpVectors(this.introCameraLookAt, this.workspaceCameraLookAt, smoothP);
+
+      // Smooth core scale down and spin
+      if (this.introCore) {
+        this.introCore.animateTransitionOut(progress, dt);
+      }
+
+      // Smooth workspace objects reveal in second half of transition
+      if (progress > 0.3) {
+        const revealP = (progress - 0.3) / 0.7;
+        const easeScale = Math.sin(revealP * Math.PI * 0.5);
+        this.interactiveObjects.forEach(obj => {
+          const baseScale = obj.userData.baseScale || new THREE.Vector3(1, 1, 1);
+          obj.scale.copy(baseScale).multiplyScalar(easeScale);
+        });
+      }
+
+      if (this.particles) {
+        this.particles.rotation.y = elapsed * 0.018;
+      }
+
+      this.renderer.render(this.scene, this.camera);
+
+      if (progress >= 1.0) {
+        this.appState = APP_STATES.WORKSPACE;
+        if (this.introCore) {
+          this.introCore.root.visible = false;
         }
-      });
+        this.interactiveObjects.forEach(obj => {
+          const baseScale = obj.userData.baseScale || new THREE.Vector3(1, 1, 1);
+          obj.scale.copy(baseScale);
+        });
+        this.controls.enabled = true;
+        this.controls.update();
+
+        if (this.onTransitionComplete) {
+          this.onTransitionComplete();
+          this.onTransitionComplete = null;
+        }
+      }
+      return;
     }
 
-    // 3. Animate Reticle
+    // 3. WORKSPACE State (Standard 60+ FPS Workspace Interaction)
+    // Ambient Object Idle Levitation (when not held)
+    if (this.ring && this.ring !== this.selectedObject) {
+      this.ring.rotation.x = 0.2 + Math.sin(elapsed * 0.8) * 0.12;
+      this.ring.rotation.y = elapsed * 0.4;
+    }
+    if (this.torus && this.torus !== this.selectedObject) {
+      this.torus.rotation.x = elapsed * 0.35;
+      this.torus.rotation.y = elapsed * 0.25;
+    }
+
+    // Animate Reticle rings
     if (this.virtualCursor3D && this.virtualCursor3D.visible) {
       this.reticleInner.rotation.z += 0.025;
       this.reticleOuter.rotation.z -= 0.015;
     }
 
-    // 4. Cosmic dust particle drift
+    // Ambient dust drift
     if (this.particles) {
-      this.particles.rotation.y = elapsed * 0.015;
+      this.particles.rotation.y = elapsed * 0.018;
     }
 
-    // 5. Update Orbit Controls
+    // Orbit controls update
     if (this.controls && this.controls.enabled) {
       this.controls.update();
     }
@@ -419,8 +561,8 @@ export class SceneManager {
 
   resize() {
     if (!this.container || !this.renderer || !this.camera) return;
-    this.width = this.container.clientWidth || window.innerWidth || 1280;
-    this.height = this.container.clientHeight || window.innerHeight || 800;
+    this.width = this.container.clientWidth || 800;
+    this.height = this.container.clientHeight || 600;
 
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
