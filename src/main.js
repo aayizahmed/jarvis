@@ -10,7 +10,7 @@ import { CameraManager } from './modules/camera.js';
 import { HandDetector } from './modules/handDetector.js';
 import { LandmarkRenderer } from './modules/landmarkRenderer.js';
 import { TelemetryManager } from './modules/telemetry.js';
-import { SceneManager } from './modules/sceneManager.js';
+import { SceneManager, APP_STATES } from './modules/sceneManager.js';
 import { GestureDetector } from './modules/gestureDetector.js';
 import { InteractionController } from './modules/interactionController.js';
 import { VideoFrameScheduler } from './modules/videoScheduler.js';
@@ -21,9 +21,12 @@ import {
   GESTURE_TYPES,
   DEFAULT_SETTINGS
 } from './modules/constants.js';
+import { DisplayCoordinator } from './modules/displayCoordinator.js';
+import { SyncClient } from './modules/syncClient.js';
+import { ROLES, generateRoomCode } from './modules/syncProtocol.js';
 
 class JarvisGestureStudio {
-  constructor() {
+  constructor(options = {}) {
     // DOM Element Cache
     this.dom = {
       // Cinematic Intro Screen Overlay
@@ -113,8 +116,37 @@ class JarvisGestureStudio {
       rotationVal: document.getElementById('rotationVal'),
       toggleGestureControl: document.getElementById('toggleGestureControl'),
       toggleOrbitControls: document.getElementById('toggleOrbitControls'),
-      togglePipWebcam: document.getElementById('togglePipWebcam')
+      togglePipWebcam: document.getElementById('togglePipWebcam'),
+
+      // Dual-Device Projection Pairing Elements
+      pairDisplayBtn: document.getElementById('pairDisplayBtn'),
+      pairBeaconDot: document.getElementById('pairBeaconDot'),
+      pairBtnText: document.getElementById('pairBtnText'),
+      pairModal: document.getElementById('pairModal'),
+      closePairModalBtn: document.getElementById('closePairModalBtn'),
+      modalRoomCode: document.getElementById('modalRoomCode'),
+      refreshCodeBtn: document.getElementById('refreshCodeBtn'),
+      modalDisplayUrlInput: document.getElementById('modalDisplayUrlInput'),
+      modalCopyUrlBtn: document.getElementById('modalCopyUrlBtn'),
+      copyBtnLabel: document.getElementById('copyBtnLabel'),
+      modalQrCodeImg: document.getElementById('modalQrCodeImg'),
+      modalConnectionStatus: document.getElementById('modalConnectionStatus'),
+      modalStatusDot: document.getElementById('modalStatusDot'),
+      modalStatusLabel: document.getElementById('modalStatusLabel'),
+      testDisplayBtn: document.getElementById('testDisplayBtn'),
+      reconnectSyncBtn: document.getElementById('reconnectSyncBtn'),
+      modeControlBtn: document.getElementById('modeControlBtn'),
+      modeDisplayBtn: document.getElementById('modeDisplayBtn'),
+      enterBtnLabelText: document.getElementById('enterBtnLabelText')
     };
+
+    // Dual-Device Network Sync Subsystem (Authoritative Controller)
+    this.roomCode = (options.roomCode || generateRoomCode()).toUpperCase();
+    this.sync = new SyncClient({
+      role: ROLES.CONTROL,
+      roomCode: this.roomCode
+    });
+    this.lastSyncBroadcastTime = 0;
 
     // Core Engine Subsystems
     this.camera = new CameraManager(this.dom.video);
@@ -160,15 +192,18 @@ class JarvisGestureStudio {
     this._bindEvents();
     this._setupResizeHandlers();
     this._syncSettings();
+    this._initSyncAndPairing();
 
     // Interaction controller callbacks
     this.interactionController.onTargetSelected = (obj) => {
       this._updateTargetChips(obj);
+      if (this.sync) this.sync.sendTargetSelect(obj?.name);
     };
 
     this.interactionController.onGestureTriggered = (action, obj) => {
       if (action === 'GRAB') this.speechManager.playChime('grab');
       if (action === 'RELEASE') this.speechManager.playChime('release');
+      if (this.sync) this.sync.sendAction(action, { name: obj?.name });
     };
 
     // Start 60+ FPS Three.js rendering loop immediately
@@ -194,6 +229,7 @@ class JarvisGestureStudio {
         this.sceneManager.setSelectedObject(this.sceneManager.ring, false);
         this._updateTargetChips(this.sceneManager.ring);
         this.speechManager.playChime('select');
+        if (this.sync) this.sync.sendTargetSelect(this.sceneManager.ring.name);
       });
     }
     if (this.dom.chipSphere) {
@@ -201,6 +237,7 @@ class JarvisGestureStudio {
         this.sceneManager.setSelectedObject(this.sceneManager.sphere, false);
         this._updateTargetChips(this.sceneManager.sphere);
         this.speechManager.playChime('select');
+        if (this.sync) this.sync.sendTargetSelect(this.sceneManager.sphere.name);
       });
     }
     if (this.dom.chipTorus) {
@@ -208,6 +245,7 @@ class JarvisGestureStudio {
         this.sceneManager.setSelectedObject(this.sceneManager.torus, false);
         this._updateTargetChips(this.sceneManager.torus);
         this.speechManager.playChime('select');
+        if (this.sync) this.sync.sendTargetSelect(this.sceneManager.torus.name);
       });
     }
 
@@ -232,6 +270,7 @@ class JarvisGestureStudio {
         this.interactionController.fsm.forceReset();
         this._updateTargetChips(this.sceneManager.sphere);
         this.speechManager.playChime('select');
+        if (this.sync) this.sync.sendResetScene();
       });
     }
 
@@ -333,6 +372,9 @@ class JarvisGestureStudio {
     this.isTransitioning = true;
 
     this.speechManager.playChime('select');
+    if (this.sync) {
+      this.sync.sendStateChange(APP_STATES.WORKSPACE);
+    }
 
     // 1. Smoothly fade out intro screen overlay via CSS
     if (this.dom.cinematicIntroScreen) {
@@ -362,6 +404,9 @@ class JarvisGestureStudio {
 
     this.speechManager.playChime('select');
     this.sceneManager.returnToIntro();
+    if (this.sync) {
+      this.sync.sendStateChange(APP_STATES.INTRO);
+    }
 
     if (this.dom.cinematicIntroScreen) {
       this.dom.cinematicIntroScreen.style.display = 'flex';
@@ -571,6 +616,12 @@ class JarvisGestureStudio {
       this.interactionController.renderInterpolate(delta, currentTime);
       this.sceneManager.render();
 
+      // Throttled 30 Hz LAN broadcast to Projection Displays
+      if (currentTime - this.lastSyncBroadcastTime >= 33) {
+        this._broadcastSceneTransforms();
+        this.lastSyncBroadcastTime = currentTime;
+      }
+
       if (currentTime - this.lastDomUpdateTime >= this.domUpdateIntervalMs) {
         this._updateThrottledDOM();
         this.lastDomUpdateTime = currentTime;
@@ -722,9 +773,247 @@ class JarvisGestureStudio {
   _hideOverlay(el) {
     if (el) el.classList.add('hidden');
   }
+
+  // =========================================================================
+  // DUAL-DEVICE LAN SYNCHRONIZATION & DISPLAY PAIRING
+  // =========================================================================
+
+  _initSyncAndPairing() {
+    // 1. Initial Room Code in Modal
+    if (this.dom.modalRoomCode) {
+      this.dom.modalRoomCode.textContent = this.roomCode;
+    }
+
+    // 2. Fetch local network IPv4 info and update UI with actual LAN IP
+    this._refreshPairingDisplayUrls();
+
+    // 3. Bind Modal Open/Close Controls
+    if (this.dom.pairDisplayBtn) {
+      this.dom.pairDisplayBtn.addEventListener('click', () => this.openPairModal());
+    }
+    if (this.dom.closePairModalBtn) {
+      this.dom.closePairModalBtn.addEventListener('click', () => this.closePairModal());
+    }
+    if (this.dom.pairModal) {
+      this.dom.pairModal.addEventListener('click', (e) => {
+        if (e.target === this.dom.pairModal) this.closePairModal();
+      });
+    }
+
+    // 4. Generate New Session PIN
+    if (this.dom.refreshCodeBtn) {
+      this.dom.refreshCodeBtn.addEventListener('click', () => {
+        this.roomCode = generateRoomCode();
+        if (this.dom.modalRoomCode) this.dom.modalRoomCode.textContent = this.roomCode;
+        this.sync.setRoomCode(this.roomCode);
+        this._refreshPairingDisplayUrls();
+        this.speechManager.playChime('select');
+      });
+    }
+
+    // 5. Copy Link to Clipboard
+    if (this.dom.modalCopyUrlBtn) {
+      this.dom.modalCopyUrlBtn.addEventListener('click', () => {
+        if (this.dom.modalDisplayUrlInput) {
+          navigator.clipboard.writeText(this.dom.modalDisplayUrlInput.value).then(() => {
+            if (this.dom.copyBtnLabel) this.dom.copyBtnLabel.textContent = '✓ COPIED!';
+            setTimeout(() => {
+              if (this.dom.copyBtnLabel) this.dom.copyBtnLabel.textContent = 'COPY LINK';
+            }, 2000);
+          }).catch(err => {
+            console.warn('Clipboard copy error:', err);
+          });
+        }
+      });
+    }
+
+    // 6. Test Display in New Browser Tab
+    if (this.dom.testDisplayBtn) {
+      this.dom.testDisplayBtn.addEventListener('click', () => {
+        const url = this.dom.modalDisplayUrlInput?.value || `/?mode=display&room=${this.roomCode}`;
+        window.open(url, '_blank');
+      });
+    }
+
+    // 7. Manual Reconnect
+    if (this.dom.reconnectSyncBtn) {
+      this.dom.reconnectSyncBtn.addEventListener('click', () => {
+        this.sync.connect();
+      });
+    }
+
+    // 8. Intro Screen Mode Chips
+    if (this.dom.modeControlBtn) {
+      this.dom.modeControlBtn.addEventListener('click', () => {
+        this.dom.modeControlBtn.classList.add('active');
+        if (this.dom.modeDisplayBtn) this.dom.modeDisplayBtn.classList.remove('active');
+        if (this.dom.enterBtnLabelText) this.dom.enterBtnLabelText.textContent = 'LAUNCH CONTROL STATION';
+      });
+    }
+    if (this.dom.modeDisplayBtn) {
+      this.dom.modeDisplayBtn.addEventListener('click', () => {
+        window.location.href = `/?mode=display&room=${this.roomCode}`;
+      });
+    }
+
+    // 9. Sync Client Status & Peer Event Listeners
+    this.sync.on('status', ({ isConnected, peerCount, latencyMs }) => {
+      this._updateSyncUI(isConnected, peerCount, latencyMs);
+    });
+
+    this.sync.on('peer_joined', ({ displaysCount }) => {
+      this.speechManager.playChime('select');
+      this._updateSyncUI(true, displaysCount);
+    });
+
+    this.sync.on('peer_left', ({ displaysCount }) => {
+      this._updateSyncUI(true, displaysCount);
+    });
+
+    // Provide complete snapshot when remote display requests it
+    this.sync.on('request_snapshot', () => {
+      this._sendFullSnapshot();
+    });
+
+    // Connect to WebSocket server
+    this.sync.connect();
+  }
+
+  _refreshPairingDisplayUrls() {
+    this.sync.fetchNetworkInfo().then(info => {
+      const primaryIp = info?.primaryIp || window.location.hostname || 'localhost';
+      const port = info?.port || window.location.port || '5173';
+      const protocol = window.location.protocol;
+      const displayUrl = `${protocol}//${primaryIp}:${port}/?mode=display&room=${this.roomCode}`;
+
+      if (this.dom.modalDisplayUrlInput) {
+        this.dom.modalDisplayUrlInput.value = displayUrl;
+      }
+
+      if (this.dom.modalQrCodeImg) {
+        this.dom.modalQrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(displayUrl)}`;
+      }
+    });
+  }
+
+  _updateSyncUI(isConnected, peerCount = 0, latencyMs = 0) {
+    if (this.dom.pairBeaconDot) {
+      this.dom.pairBeaconDot.className = isConnected && peerCount > 0 ? 'btn-dot active' : 'btn-dot';
+    }
+
+    if (this.dom.pairBtnText) {
+      if (!isConnected) {
+        this.dom.pairBtnText.textContent = 'PAIR DISPLAY (OFFLINE)';
+      } else if (peerCount > 0) {
+        this.dom.pairBtnText.textContent = `DISPLAY PAIRED (${peerCount})`;
+      } else {
+        this.dom.pairBtnText.textContent = 'PAIR DISPLAY';
+      }
+    }
+
+    if (this.dom.modalConnectionStatus) {
+      this.dom.modalConnectionStatus.className = isConnected && peerCount > 0 ? 'connection-status-pill connected' : 'connection-status-pill';
+    }
+
+    if (this.dom.modalStatusLabel) {
+      if (!isConnected) {
+        this.dom.modalStatusLabel.textContent = 'SERVER DISCONNECTED — RETRYING...';
+      } else if (peerCount > 0) {
+        this.dom.modalStatusLabel.textContent = `PROJECTION DISPLAY CONNECTED (${peerCount} Device${peerCount > 1 ? 's' : ''})`;
+      } else {
+        this.dom.modalStatusLabel.textContent = 'WAITING FOR PROJECTION DISPLAY...';
+      }
+    }
+  }
+
+  openPairModal() {
+    if (this.dom.pairModal) this.dom.pairModal.classList.remove('hidden');
+    this._refreshPairingDisplayUrls();
+  }
+
+  closePairModal() {
+    if (this.dom.pairModal) this.dom.pairModal.classList.add('hidden');
+  }
+
+  _broadcastSceneTransforms() {
+    if (!this.sync || !this.sync.isConnected) return;
+
+    const items = this.sceneManager.interactiveObjects.map(obj => ({
+      name: obj.name,
+      id: obj.uuid,
+      pos: [
+        Number(obj.position.x.toFixed(3)),
+        Number(obj.position.y.toFixed(3)),
+        Number(obj.position.z.toFixed(3))
+      ],
+      rot: [
+        Number(obj.quaternion.x.toFixed(4)),
+        Number(obj.quaternion.y.toFixed(4)),
+        Number(obj.quaternion.z.toFixed(4)),
+        Number(obj.quaternion.w.toFixed(4))
+      ],
+      scale: [
+        Number(obj.scale.x.toFixed(3)),
+        Number(obj.scale.y.toFixed(3)),
+        Number(obj.scale.z.toFixed(3))
+      ],
+      isHeld: obj === this.interactionController.heldObject
+    }));
+
+    const reticle = this.sceneManager.virtualCursor3D ? {
+      visible: this.sceneManager.virtualCursor3D.visible,
+      pos: [
+        Number(this.sceneManager.virtualCursor3D.position.x.toFixed(3)),
+        Number(this.sceneManager.virtualCursor3D.position.y.toFixed(3)),
+        Number(this.sceneManager.virtualCursor3D.position.z.toFixed(3))
+      ],
+      mode: this.latestInteractionStatus?.gesture || 'TRACKING'
+    } : null;
+
+    this.sync.sendTransforms(items, reticle);
+  }
+
+  _sendFullSnapshot() {
+    if (!this.sync || !this.sync.isConnected) return;
+
+    const snapshot = {
+      state: this.sceneManager.appState,
+      selectedTarget: this.sceneManager.selectedObject?.name || null,
+      transforms: this.sceneManager.interactiveObjects.map(obj => ({
+        name: obj.name,
+        id: obj.uuid,
+        pos: [obj.position.x, obj.position.y, obj.position.z],
+        rot: [obj.quaternion.x, obj.quaternion.y, obj.quaternion.z, obj.quaternion.w],
+        scale: [obj.scale.x, obj.scale.y, obj.scale.z]
+      })),
+      entities: this.sceneManager.interactiveObjects.map(obj => ({
+        id: obj.uuid,
+        name: obj.name,
+        assetId: obj.userData?.type || 'sphere',
+        pos: [obj.position.x, obj.position.y, obj.position.z]
+      }))
+    };
+
+    this.sync.sendSnapshot(snapshot);
+  }
 }
 
-// Bootstrap Application
+// =========================================================================
+// APPLICATION BOOTSTRAP (ROUTING BETWEEN CONTROL & PROJECTION DISPLAY)
+// =========================================================================
+
 window.addEventListener('DOMContentLoaded', () => {
-  window.__gestureFlowStudio = new JarvisGestureStudio();
+  const params = new URLSearchParams(window.location.search);
+  const path = window.location.pathname;
+  const isDisplay = params.get('mode') === 'display' || path.includes('/display');
+  const roomCode = (params.get('room') || '7429').toUpperCase();
+
+  if (isDisplay) {
+    console.log(`⚡ [GestureFlow] Booting PROJECTION DISPLAY mode (Room: ${roomCode})`);
+    window.__gestureFlowDisplay = new DisplayCoordinator({ roomCode });
+  } else {
+    console.log(`⚡ [GestureFlow] Booting CONTROL STATION mode (Room: ${roomCode})`);
+    window.__gestureFlowStudio = new JarvisGestureStudio({ roomCode });
+  }
 });
+
