@@ -54,7 +54,25 @@ export class GestureDetector {
    * @param {number} timestamp 
    * @returns {Object} Filtered gesture state snapshot
    */
-  process(handsLandmarks = [], isMirrored = true, timestamp = performance.now()) {
+  process(handsLandmarksOrResult = [], arg2 = true, arg3 = null, arg4 = null, arg5 = null) {
+    let handsLandmarks = handsLandmarksOrResult;
+    if (handsLandmarksOrResult && typeof handsLandmarksOrResult === 'object' && !Array.isArray(handsLandmarksOrResult)) {
+      handsLandmarks = handsLandmarksOrResult.landmarks || [];
+    }
+    if (!Array.isArray(handsLandmarks)) {
+      handsLandmarks = [];
+    }
+
+    let isMirrored = true;
+    let timestamp = performance.now();
+
+    if (typeof arg2 === 'boolean') {
+      isMirrored = arg2;
+      if (typeof arg3 === 'number') timestamp = arg3;
+    } else if (typeof arg5 === 'boolean') {
+      isMirrored = arg5;
+    }
+
     const handCount = handsLandmarks.length;
 
     // Handle temporary tracking dropouts vs sustained tracking loss

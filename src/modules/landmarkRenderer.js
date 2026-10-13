@@ -48,9 +48,19 @@ export class LandmarkRenderer {
     this.ctx.restore();
   }
 
-  render(handsLandmarks = [], handednessList = []) {
+  render(detectionResultOrLandmarks = [], handednessList = []) {
     this.clear();
-    if (!handsLandmarks || handsLandmarks.length === 0) return;
+    if (!detectionResultOrLandmarks) return;
+
+    let handsLandmarks = detectionResultOrLandmarks;
+    let handedness = handednessList;
+
+    if (detectionResultOrLandmarks && typeof detectionResultOrLandmarks === 'object' && !Array.isArray(detectionResultOrLandmarks)) {
+      handsLandmarks = detectionResultOrLandmarks.landmarks || [];
+      handedness = detectionResultOrLandmarks.handedness || handednessList || [];
+    }
+
+    if (!Array.isArray(handsLandmarks) || handsLandmarks.length === 0) return;
 
     const { mirrored, showSkeleton, showLandmarks } = this.options;
     const w = this.width;
@@ -59,8 +69,8 @@ export class LandmarkRenderer {
     handsLandmarks.forEach((landmarks, handIndex) => {
       if (!landmarks || landmarks.length !== 21) return;
 
-      const handInfo = handednessList[handIndex] && handednessList[handIndex][0]
-        ? handednessList[handIndex][0]
+      const handInfo = handedness && handedness[handIndex] && handedness[handIndex][0]
+        ? handedness[handIndex][0]
         : null;
 
       // Project landmarks to pixel space

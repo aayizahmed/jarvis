@@ -128,9 +128,11 @@ class JarvisGestureStudio {
 
     // Hardware Frame Scheduler
     this.scheduler = new VideoFrameScheduler({
+      video: this.dom.video,
       onFrame: (video, time, meta) => this._onVideoFrame(video, time, meta),
       onTimeout: () => this._onSchedulerTimeout()
     });
+    this.telemetry.setDiagnosticSources({ scheduler: this.scheduler, detector: this.detector });
 
     // Lifecycle State
     this.isRunning = false;
@@ -452,14 +454,14 @@ class JarvisGestureStudio {
       if (this.dom.toggleCameraBtn) this.dom.toggleCameraBtn.classList.add('active');
     } catch (err) {
       console.error('Camera pipeline failed:', err);
+      this.stopCamera(true);
       this._showOverlay(this.dom.errorOverlay);
       if (this.dom.errorMessage) this.dom.errorMessage.textContent = err.message || 'DEVICE INITIALIZATION FAILED';
       this._updateStatusBeacon(TRACKING_STATES.ERROR);
-      this.stopCamera();
     }
   }
 
-  stopCamera() {
+  stopCamera(isError = false) {
     this.scheduler.stop();
     this.camera.stop();
     this.renderer.clear();
@@ -469,9 +471,12 @@ class JarvisGestureStudio {
     if (this.sceneManager.virtualCursor3D) this.sceneManager.virtualCursor3D.visible = false;
     this.sceneManager.setHoveredObject(null);
 
-    this._showOverlay(this.dom.idleOverlay);
     this._hideOverlay(this.dom.loadingOverlay);
-    this._updateStatusBeacon(TRACKING_STATES.STOPPED);
+    if (!isError) {
+      this._showOverlay(this.dom.idleOverlay);
+      this._hideOverlay(this.dom.errorOverlay);
+      this._updateStatusBeacon(TRACKING_STATES.STOPPED);
+    }
     if (this.dom.cameraBtnText) this.dom.cameraBtnText.textContent = 'ENGAGE SENSORS';
     if (this.dom.toggleCameraBtn) this.dom.toggleCameraBtn.classList.remove('active');
   }
@@ -520,7 +525,7 @@ class JarvisGestureStudio {
     this.telemetry.recordInference(infDuration, hasHands ? result.landmarks.length : 0);
 
     if (result) {
-      this.renderer.render(result.landmarks, result.handednesses);
+      this.renderer.render(result.landmarks, result.handedness);
     } else {
       this.renderer.clear();
     }
@@ -528,10 +533,8 @@ class JarvisGestureStudio {
     if (hasHands) {
       const gestureFrame = this.gestureDetector.process(
         result.landmarks,
-        result.handednesses,
-        this.dom.video.videoWidth,
-        this.dom.video.videoHeight,
-        this.settings.mirrorPreview
+        this.settings.mirrorPreview,
+        infStartTime
       );
 
       this.latestGestureFrame = gestureFrame;

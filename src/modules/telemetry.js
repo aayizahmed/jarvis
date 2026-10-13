@@ -95,6 +95,13 @@ export class TelemetryManager {
     this.tickRender(timestamp);
   }
 
+  recordVideoFrameAdvance(frameAgeMs = 0) {
+    if (this._snapshot) {
+      this._snapshot.cameraFrameAgeMs = Math.round(frameAgeMs);
+      this._snapshot.isStreamAdvancing = true;
+    }
+  }
+
   /**
    * Called when a camera frame inference finishes
    */

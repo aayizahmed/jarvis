@@ -6,9 +6,16 @@
  */
 
 export class VideoFrameScheduler {
-  constructor(videoElement, onFrameCallback) {
-    this.video = videoElement;
-    this.onFrame = onFrameCallback;
+  constructor(videoOrOptions, onFrameCallback) {
+    if (videoOrOptions && typeof videoOrOptions === 'object' && !(videoOrOptions instanceof HTMLVideoElement)) {
+      this.video = videoOrOptions.video || null;
+      this.onFrame = videoOrOptions.onFrame || null;
+      this.onTimeout = videoOrOptions.onTimeout || null;
+    } else {
+      this.video = videoOrOptions || null;
+      this.onFrame = onFrameCallback || null;
+      this.onTimeout = null;
+    }
     this.isRunning = false;
 
     // Check for native requestVideoFrameCallback support
@@ -35,16 +42,24 @@ export class VideoFrameScheduler {
 
   /**
    * Start processing video frames
+   * @param {HTMLVideoElement|null} videoElement Optional video element override
    */
-  start() {
+  start(videoElement = null) {
+    if (videoElement) {
+      this.video = videoElement;
+    }
+    if (!this.video) {
+      console.warn('VideoFrameScheduler.start called without valid video element');
+      return;
+    }
     if (this.isRunning) return;
     this.isRunning = true;
     this.lastFrameTimestamp = performance.now();
-    this.lastVideoTime = this.video.currentTime;
+    this.lastVideoTime = this.video.currentTime || 0;
     this.isStreamAdvancing = true;
     this.consecutiveStalls = 0;
 
-    if (this.hasRVFC) {
+    if (this.hasRVFC && typeof this.video.requestVideoFrameCallback === 'function') {
       this.rvfcHandle = this.video.requestVideoFrameCallback(this._rvfcStep);
     } else {
       this.rafHandle = requestAnimationFrame(this._fallbackStep);
@@ -93,13 +108,15 @@ export class VideoFrameScheduler {
 
     // Dispatch frame to processor
     try {
-      this.onFrame(frameTime, metadata);
+      if (this.onFrame) {
+        this.onFrame(this.video, frameTime, metadata);
+      }
     } catch (err) {
       console.error('VideoFrameScheduler frame callback error:', err);
     }
 
     // Schedule next frame
-    if (this.isRunning) {
+    if (this.isRunning && this.video) {
       this.rvfcHandle = this.video.requestVideoFrameCallback(this._rvfcStep);
     }
   }
@@ -108,7 +125,7 @@ export class VideoFrameScheduler {
    * High-frequency fallback for browsers lacking requestVideoFrameCallback
    */
   _fallbackStep(now) {
-    if (!this.isRunning) return;
+    if (!this.isRunning || !this.video) return;
 
     if (this.video.readyState >= 2 && this.video.currentTime !== this.lastVideoTime) {
       this.lastVideoTime = this.video.currentTime;
@@ -118,7 +135,9 @@ export class VideoFrameScheduler {
       this.consecutiveStalls = 0;
 
       try {
-        this.onFrame(this.lastFrameTimestamp, null);
+        if (this.onFrame) {
+          this.onFrame(this.video, this.lastFrameTimestamp, null);
+        }
       } catch (err) {
         console.error('VideoFrameScheduler fallback error:', err);
       }
@@ -133,7 +152,7 @@ export class VideoFrameScheduler {
    * Watchdog checking that camera frames are actually advancing
    */
   _watchdogCheck() {
-    if (!this.isRunning) return;
+    if (!this.isRunning || !this.video) return;
 
     const now = performance.now();
     const frameAgeMs = now - this.lastFrameTimestamp;
@@ -143,6 +162,9 @@ export class VideoFrameScheduler {
       this.consecutiveStalls++;
       if (this.consecutiveStalls > 3) {
         this.isStreamAdvancing = false;
+        if (this.onTimeout) {
+          this.onTimeout();
+        }
       }
 
       // If video has advanced currentTime despite missing RVFC, trigger a recovery frame
@@ -153,7 +175,9 @@ export class VideoFrameScheduler {
           this.isStreamAdvancing = true;
           this.consecutiveStalls = 0;
           try {
-            this.onFrame(now, null);
+            if (this.onFrame) {
+              this.onFrame(this.video, now, null);
+            }
           } catch (e) {
             console.warn('Watchdog frame recovery exception:', e);
           }

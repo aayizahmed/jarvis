@@ -65,14 +65,11 @@ export class CameraManager {
     try {
       stream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch (err) {
-      // If exact device failed, attempt fallback to default video
-      if (preferredDeviceId && err.name === 'OverconstrainedError') {
-        console.warn('Exact device constraint failed. Falling back to default video input.');
-        delete constraints.video.deviceId;
-        constraints.video.facingMode = 'user';
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } else {
-        throw this._formatCameraError(err);
+      console.warn('Initial camera constraints failed, attempting fallback to simple { video: true }...', err);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (fallbackErr) {
+        throw this._formatCameraError(fallbackErr);
       }
     }
 
@@ -80,24 +77,52 @@ export class CameraManager {
     this.video.srcObject = stream;
     this.video.playsInline = true;
     this.video.muted = true;
+    this.video.autoplay = true;
 
     // Wait for video metadata to load and video to start playing
     await new Promise((resolve, reject) => {
-      const onLoadedMetadata = () => {
+      let settled = false;
+
+      const timeoutId = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          this.videoWidth = this.video.videoWidth || 1280;
+          this.videoHeight = this.video.videoHeight || 720;
+          this.isStreaming = true;
+          resolve();
+        }
+      }, 3500);
+
+      const onReady = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+
         this.video.play()
-          .then(() => {
+          .catch((e) => console.warn('Video play notice:', e))
+          .finally(() => {
             this.videoWidth = this.video.videoWidth || 1280;
             this.videoHeight = this.video.videoHeight || 720;
             this.isStreaming = true;
             resolve();
-          })
-          .catch(reject);
+          });
       };
 
-      const onError = (e) => reject(new Error('Video element error: ' + (e?.message || 'Unknown')));
+      const onError = (e) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        reject(new Error('Video element error: ' + (e?.message || 'Unknown')));
+      };
 
-      this.video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
-      this.video.addEventListener('error', onError, { once: true });
+      if (this.video.readyState >= 1) {
+        onReady();
+      } else {
+        this.video.addEventListener('loadedmetadata', onReady, { once: true });
+        this.video.addEventListener('loadeddata', onReady, { once: true });
+        this.video.addEventListener('canplay', onReady, { once: true });
+        this.video.addEventListener('error', onError, { once: true });
+      }
     });
 
     const activeTrack = stream.getVideoTracks()[0];
