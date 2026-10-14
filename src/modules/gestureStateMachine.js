@@ -87,7 +87,7 @@ export class GestureStateMachine {
       }
     } else {
       // Hand disappeared: Handle tracking loss buffer
-      if (this.currentState === INTERACTION_STATES.DRAGGING || this.currentState === INTERACTION_STATES.SCALING) {
+      if (this.currentState === INTERACTION_STATES.DRAGGING || this.currentState === INTERACTION_STATES.SCALING || this.currentState === INTERACTION_STATES.TRACKING_LOST) {
         if (this.currentState !== INTERACTION_STATES.TRACKING_LOST) {
           this._transition(INTERACTION_STATES.TRACKING_LOST, timestamp);
         } else {
@@ -99,6 +99,9 @@ export class GestureStateMachine {
         }
         return this.currentState;
       } else {
+        if (this.targetObject) {
+          this._releaseGrab(timestamp);
+        }
         this._transition(INTERACTION_STATES.IDLE, timestamp);
         return this.currentState;
       }

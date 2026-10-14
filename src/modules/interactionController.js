@@ -29,10 +29,13 @@ export class InteractionController {
     this.deltaQuatY = new THREE.Quaternion();
     this.deltaQuatX = new THREE.Quaternion();
     this.rayToObjVec = new THREE.Vector3();
+    this.dragPlaneNormal = new THREE.Vector3();
+    this.dragCoplanarPoint = new THREE.Vector3();
 
     // Interaction State
     this.heldObject = null;
-    this.lastCursorScreen = { x: 0.5, y: 0.5 };
+    this.latestCursor2D = { x: 0.5, y: 0.5 };
+    this.lastCursorScreen = null;
     this.lastUpdateTime = performance.now();
 
     // Configurable parameters
@@ -97,6 +100,10 @@ export class InteractionController {
     } = gestureFrame;
 
     this.latestGesture = gesture;
+    if (cursor) {
+      this.latestCursor2D.x = cursor.x;
+      this.latestCursor2D.y = cursor.y;
+    }
 
     // 1. Raycast from Normalized Device Coordinates
     this.raycaster.setFromCamera(ndc, this.sm.camera);
@@ -179,10 +186,9 @@ export class InteractionController {
 
     // 4. Update Interaction Drag Plane
     const cursorPlaneDist = this.heldObject ? this.heldObject.position.z : (this.sm.selectedObject ? this.sm.selectedObject.position.z : 0);
-    this.dragPlane.setFromNormalAndCoplanarPoint(
-      this.cameraDir.clone().negate(),
-      new THREE.Vector3(0, 0, cursorPlaneDist)
-    );
+    this.dragPlaneNormal.copy(this.cameraDir).negate();
+    this.dragCoplanarPoint.set(0, 0, cursorPlaneDist);
+    this.dragPlane.setFromNormalAndCoplanarPoint(this.dragPlaneNormal, this.dragCoplanarPoint);
     this.raycaster.ray.intersectPlane(this.dragPlane, this.planeIntersection);
 
     // 5. Update State Machine
@@ -269,8 +275,9 @@ export class InteractionController {
     this.targetScale.copy(target.scale);
 
     // Anchor drag plane at object's exact center
+    this.dragPlaneNormal.copy(this.cameraDir).negate();
     this.dragPlane.setFromNormalAndCoplanarPoint(
-      this.cameraDir.clone().negate(),
+      this.dragPlaneNormal,
       this.heldObject.position
     );
 
@@ -280,8 +287,8 @@ export class InteractionController {
     // PRESERVE INITIAL GRAB OFFSET: prevents snap/jump
     this.grabOffset.copy(this.heldObject.position).sub(this.planeIntersection);
 
-    // Baseline cursor for rotation
-    this.lastCursorScreen = { ...this.planeIntersection };
+    // Baseline cursor for rotation - match current 2D screen cursor
+    this.lastCursorScreen = { x: this.latestCursor2D.x, y: this.latestCursor2D.y };
 
     // Highlight mesh
     this.sm.setSelectedObject(this.heldObject, true);
@@ -304,6 +311,7 @@ export class InteractionController {
     }
     this.isTwoHandScaling = false;
     this.initialTwoHandDist = null;
+    this.lastCursorScreen = null;
 
     // Re-enable OrbitControls
     if (this.sm.controls) {
@@ -312,7 +320,7 @@ export class InteractionController {
   }
 
   _updateDragTargetAndRotate(cursor) {
-    if (!this.heldObject) return;
+    if (!this.heldObject || !cursor) return;
 
     // 1. Calculate Target Position along Drag Plane
     if (this.raycaster.ray.intersectPlane(this.dragPlane, this.planeIntersection)) {
@@ -325,6 +333,11 @@ export class InteractionController {
     }
 
     // 2. Quaternion-Based Delta Rotation
+    if (!this.lastCursorScreen) {
+      this.lastCursorScreen = { x: cursor.x, y: cursor.y };
+      return;
+    }
+
     const deltaX = cursor.x - this.lastCursorScreen.x;
     const deltaY = cursor.y - this.lastCursorScreen.y;
 
@@ -342,7 +355,7 @@ export class InteractionController {
       this.heldObject.quaternion.premultiply(this.deltaQuatX);
     }
 
-    this.lastCursorScreen = { ...cursor };
+    this.lastCursorScreen = { x: cursor.x, y: cursor.y };
   }
 
   _updateScalingTarget(twoHandDistance) {

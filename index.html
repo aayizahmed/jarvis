@@ -41,21 +41,9 @@
         </div>
 
         <div class="intro-entry-group">
-          <!-- Dual-Device Mode Selector -->
-          <div class="intro-mode-selector">
-            <button id="modeControlBtn" class="intro-mode-chip active" type="button" title="Laptop Mode: Camera + Hand Gesture Controller">
-              <span class="chip-dot"></span>
-              <span>💻 CONTROL STATION</span>
-            </button>
-            <button id="modeDisplayBtn" class="intro-mode-chip" type="button" title="External Screen Mode: Full-Screen 3D Projection">
-              <span class="chip-dot"></span>
-              <span>📽️ PROJECTION DISPLAY</span>
-            </button>
-          </div>
-
           <button id="enterExperienceBtn" class="intro-enter-btn" type="button" aria-label="Enter GestureFlow Experience">
             <span class="btn-energy-border"></span>
-            <span class="btn-label-text" id="enterBtnLabelText">LAUNCH CONTROL STATION</span>
+            <span class="btn-label-text">ENTER EXPERIENCE</span>
             <svg class="btn-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
@@ -139,11 +127,6 @@
 
           <button id="returnToIntroBtn" class="jarvis-btn btn-ghost" type="button" title="Return to Cinematic Holographic Intro">
             <span>⚡ INTRO</span>
-          </button>
-
-          <button id="pairDisplayBtn" class="jarvis-btn btn-ghost" type="button" title="Pair with External Projection Display">
-            <span class="btn-dot" id="pairBeaconDot"></span>
-            <span id="pairBtnText">PAIR DISPLAY</span>
           </button>
 
           <button id="toggleCameraBtn" class="jarvis-btn btn-engage" type="button">
@@ -430,91 +413,6 @@
           </div>
         </aside>
       </main>
-    </div>
-
-    <!-- 3. DUAL-DEVICE PROJECTION PAIRING MODAL (FOR CONTROL STATION) -->
-    <div id="pairModal" class="jarvis-modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Dual-Device Projection Pairing">
-      <div class="jarvis-modal-card">
-        <div class="modal-corner c-tl"></div>
-        <div class="modal-corner c-tr"></div>
-        <div class="modal-corner c-bl"></div>
-        <div class="modal-corner c-br"></div>
-        
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <span class="modal-beacon-dot" id="modalBeaconDot"></span>
-            <span class="modal-title">HOLOGRAPHIC PROJECTION PAIRING</span>
-          </div>
-          <button id="closePairModalBtn" class="modal-close-btn" type="button" aria-label="Close Pairing Modal">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <p class="modal-instruction">
-            Connect a second device (projector, television, or external display) to render the full-screen 3D holographic universe in real-time over your local network.
-          </p>
-
-          <div class="pairing-code-section">
-            <div class="code-label">SESSION PAIRING PIN</div>
-            <div class="code-badge-row">
-              <span class="code-digit-badge" id="modalRoomCode">7429</span>
-              <button id="refreshCodeBtn" class="jarvis-btn btn-sm btn-ghost" type="button" title="Generate New Room Code">⟳ NEW PIN</button>
-            </div>
-          </div>
-
-          <div class="pairing-url-section">
-            <div class="code-label">PROJECTION DISPLAY URL (LAN)</div>
-            <div class="url-copy-box">
-              <input id="modalDisplayUrlInput" class="modal-url-input" type="text" readonly value="http://localhost:5173/?mode=display" />
-              <button id="modalCopyUrlBtn" class="jarvis-btn btn-engage btn-sm" type="button">
-                <span id="copyBtnLabel">COPY LINK</span>
-              </button>
-            </div>
-            <div class="url-hint">Open this URL in any browser on the projector/TV connected to the same Wi-Fi.</div>
-          </div>
-
-          <div class="pairing-qr-row">
-            <div class="qr-container">
-              <img id="modalQrCodeImg" class="qr-img" src="" alt="Pairing QR Code" />
-            </div>
-            <div class="qr-info">
-              <div class="qr-tag">⚡ INSTANT CONNECT</div>
-              <div class="qr-sub">Scan with phone, tablet, or secondary computer on the same Wi-Fi network.</div>
-              <div class="connection-status-pill" id="modalConnectionStatus">
-                <span class="status-pulse-dot" id="modalStatusDot"></span>
-                <span id="modalStatusLabel">WAITING FOR PROJECTION DISPLAY...</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer-actions">
-            <button id="testDisplayBtn" class="jarvis-btn btn-ghost" type="button">OPEN LOCAL DISPLAY TAB</button>
-            <button id="reconnectSyncBtn" class="jarvis-btn btn-ghost" type="button">RECONNECT SERVER</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. PROJECTION DISPLAY MINIMAL CINEMATIC HUD (FOR DISPLAY MODE) -->
-    <div id="displayHudOverlay" class="display-cinematic-hud hidden">
-      <div class="display-hud-brand">
-        <span class="display-beacon-dot online" id="displayHudBeacon"></span>
-        <span class="display-hud-title">GESTUREFLOW // PROJECTION DISPLAY</span>
-      </div>
-      <div class="display-hud-meta">
-        <span class="display-meta-item" id="displayHudRoomText">ROOM: 7429</span>
-        <span class="display-meta-item text-cyan" id="displayHudStatusText">LIVE // PAIRED</span>
-        <span class="display-meta-item text-emerald" id="displayHudLatencyText">0 ms</span>
-        <button id="displayFullscreenBtn" class="display-hud-btn" type="button" title="Toggle Fullscreen">⛶ FULLSCREEN</button>
-      </div>
-    </div>
-
-    <!-- 5. PROJECTION DISPLAY RECONNECTING OVERLAY -->
-    <div id="displayReconnectOverlay" class="display-reconnect-backdrop hidden">
-      <div class="display-reconnect-card">
-        <div class="loading-arc-spinner"></div>
-        <div class="display-reconnect-title">PROJECTION FEED PAUSED</div>
-        <div class="display-reconnect-sub" id="displayReconnectMsg">RECONNECTING TO CONTROLLER STATION...</div>
-      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

@@ -76,7 +76,8 @@ export class SceneManager {
     this.hoveredObject = null;
     this.selectedObject = null;
 
-    this.clock = new THREE.Clock();
+    this.startTime = performance.now();
+    this.lastFrameTime = performance.now();
 
     this._init();
   }
@@ -103,7 +104,7 @@ export class SceneManager {
     this.renderer.setSize(this.width, this.height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     this.container.appendChild(this.renderer.domElement);
@@ -463,8 +464,10 @@ export class SceneManager {
   // =========================================================================
 
   render() {
-    const elapsed = this.clock.getElapsedTime();
-    const dt = Math.max(0.001, Math.min(0.033, this.clock.getDelta() || 0.016));
+    const now = performance.now();
+    const elapsed = (now - this.startTime) * 0.001;
+    const dt = Math.max(0.001, Math.min(0.033, (now - this.lastFrameTime) * 0.001));
+    this.lastFrameTime = now;
 
     // 1. INTRO State
     if (this.appState === APP_STATES.INTRO) {
